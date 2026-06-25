@@ -46,7 +46,7 @@
     "clsx": "^2.1.1",
     "codemirror": "^6.0.2",
     "date-fns": "^4.4.0",
-    "framer-motion": "^12.23.2",
+    "framer-motion": "^12.42.0",
     "jose": "^6.2.3",
     "lucide-react": "^0.525.0",
     "mongodb": "^6.16.0",
