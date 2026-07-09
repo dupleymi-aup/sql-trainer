@@ -7,5 +7,5 @@ export const GET = withTeacherAuth(async ({ request }) => {
   const raw = Number(url.searchParams.get('limit'));
   const limit = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 500) : 50;
   const predictions = getChurnPredictions(limit);
-  return NextResponse.json({ predictions });
+  return NextResponse.json({ success: true, predictions });
 });

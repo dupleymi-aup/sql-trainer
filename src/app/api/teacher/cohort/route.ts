@@ -4,5 +4,5 @@ import { getCohortAnalysis } from '@/lib/db-users';
 
 export const GET = withTeacherAuth(async () => {
   const data = getCohortAnalysis();
-  return NextResponse.json({ data });
+  return NextResponse.json({ success: true, data });
 });

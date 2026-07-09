@@ -40,6 +40,7 @@ export const GET = withTeacherAuth(async () => {
     .map((p) => ({ task_id: p.task_id, avg_attempts: p.avg_attempts, failure_rate: p.failure_rate }));
 
   return NextResponse.json({
+    success: true,
     analytics: {
       difficultyStats,
       completionByLevel,
