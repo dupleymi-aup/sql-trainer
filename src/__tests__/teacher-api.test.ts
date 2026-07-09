@@ -213,8 +213,8 @@ describe('Teacher API Routes', () => {
       mockDb.getGroupMembers.mockReturnValue([]);
 
       const { DELETE } = await import('@/app/api/teacher/groups/[id]/members/route');
-      const url = 'http://localhost/api/teacher/groups/g1/members?userId=s1';
-      const res = await DELETE(makeRequest(url, 'DELETE'), { params: { id: 'g1' } });
+      const url = 'http://localhost/api/teacher/groups/g1/members';
+      const res = await DELETE(makeRequest(url, 'DELETE', { studentIds: ['s1'] }), { params: { id: 'g1' } });
       const data = await res.json();
 
       expect(data.success).toBe(true);

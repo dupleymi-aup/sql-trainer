@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import {
-  findUserByEmail,
-  createResetCode,
-  updatePassword,
-  verifyResetCode,
-  getUserById,
-  queueEmail,
-} from '@/lib/db-users';
+import { findUserByEmail, createResetCode, updatePassword, verifyResetCode, queueEmail } from '@/lib/db-users';
 import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
 import { escapeHtml } from '@/lib/html-utils';
@@ -123,11 +116,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Failed to update password' }, { status: 500 });
     }
 
-    const user = await getUserById(verifyResult.userId);
     return NextResponse.json({
       success: true,
       message: 'Password changed successfully',
-      user: user ? { id: user.id, name: user.name, email: user.email } : null,
     });
   } catch (err: unknown) {
     logger.error('Reset password PUT error:', err);

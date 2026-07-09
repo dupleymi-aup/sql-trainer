@@ -39,14 +39,15 @@ export const POST = withTeacherAuth(async ({ session, request, params }) => {
   }
 });
 
+const removeMembersSchema = z.object({
+  studentIds: z.array(z.string()).min(1, 'studentIds array is required'),
+});
+
 export const DELETE = withTeacherAuth(async ({ session, request, params }) => {
   try {
-    const url = new URL(request.url);
     const groupId = params?.id;
-    const userId = url.searchParams.get('userId');
-
-    if (!groupId || !userId) {
-      return NextResponse.json({ success: false, error: 'Group ID and userId are required' }, { status: 400 });
+    if (!groupId) {
+      return NextResponse.json({ success: false, error: 'Group ID is required' }, { status: 400 });
     }
 
     const group = getGroupById(groupId);
@@ -58,7 +59,12 @@ export const DELETE = withTeacherAuth(async ({ session, request, params }) => {
       return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
     }
 
-    removeGroupMember(groupId, userId, session.user.id);
+    const parsed = await parseAndValidate(request, removeMembersSchema);
+    if ('response' in parsed) return parsed.response;
+
+    for (const userId of parsed.data.studentIds) {
+      removeGroupMember(groupId, userId, session.user.id);
+    }
     const members = getGroupMembers(groupId);
 
     return NextResponse.json({ success: true, members });

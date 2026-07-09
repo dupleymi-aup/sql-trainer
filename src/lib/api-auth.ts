@@ -36,7 +36,7 @@ interface AuthSession {
 
 export async function requireAdmin() {
   const session = (await auth()) as AuthSession | null;
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
   const userRole = session.user.role;
@@ -48,7 +48,7 @@ export async function requireAdmin() {
 
 export async function requireTeacher() {
   const session = (await auth()) as AuthSession | null;
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
   const userRole = session.user.role;
@@ -195,7 +195,7 @@ export const withTeacherAuth = withRoleAuth(requireTeacher, 'teacher', { max: 30
  */
 async function requireUser() {
   const session = (await auth()) as AuthSession | null;
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
   return { error: null, session };

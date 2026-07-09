@@ -112,8 +112,8 @@ export function splitStatements(sql: string): string[] {
       continue;
     }
 
-    // Split on semicolons
-    if (char === ';') {
+    // Split on semicolons (but not inside block comments)
+    if (char === ';' && !inBlockComment) {
       const trimmed = current.trim();
       if (trimmed.length > 0) {
         statements.push(trimmed);

@@ -8,8 +8,6 @@ import { apiServerError } from '@/lib/api-error';
 import { parseAndValidate } from '@/lib/validation';
 import { validateCsrfTokenEdge, csrfErrorResponse } from '@/lib/csrf';
 
-const ALLOWED_SELF_ROLES: UserRole[] = ['student', 'teacher'];
-
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().email('Invalid email'),
@@ -18,7 +16,7 @@ const registerSchema = z.object({
     .min(8, 'Password must be at least 8 characters')
     .max(128, 'Password is too long (max 128 characters)'),
   phone: z.string().optional().or(z.literal('')),
-  role: z.enum(ALLOWED_SELF_ROLES as [string, ...string[]]).optional(),
+  role: z.enum(['student'] as [string, ...string[]]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -53,8 +51,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: sanitizedPhone.error }, { status: 400 });
     }
 
-    // Use requested role or default to 'student'; Zod schema already validates enum values
-    const userRole = (role as UserRole) ?? 'student';
+    // Always default to 'student' for self-registration
+    const userRole: UserRole = (role as UserRole) ?? 'student';
 
     const user = await createUser(email, sanitizedName.value, password, sanitizedPhone.value || undefined, userRole);
     if (!user) {

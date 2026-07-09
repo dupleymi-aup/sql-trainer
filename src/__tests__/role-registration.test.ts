@@ -27,7 +27,8 @@ vi.mock('../lib/rate-limit', () => ({
 
 vi.mock('../lib/csrf', () => ({
   validateCsrfTokenEdge: () => true,
-  csrfErrorResponse: () => new Response(JSON.stringify({ success: false, error: 'CSRF validation failed' }), { status: 403 }),
+  csrfErrorResponse: () =>
+    new Response(JSON.stringify({ success: false, error: 'CSRF validation failed' }), { status: 403 }),
 }));
 
 vi.mock('../lib/logger', () => ({
@@ -67,11 +68,9 @@ describe('Role-based registration', () => {
     expect(data.user.role).toBe('student');
   });
 
-  it('registers as teacher when requested', async () => {
+  it('rejects teacher role from self-registration', async () => {
     const response = await register('Teacher', 'teacher@example.com', 'password123', 'teacher');
-    const data = await response.json();
-    expect(data.success).toBe(true);
-    expect(data.user.role).toBe('teacher');
+    expect(response.status).toBe(400);
   });
 
   it('rejects duplicate email', async () => {

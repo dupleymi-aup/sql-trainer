@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,6 +77,11 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
   const [students, setStudents] = useState<Student[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const selectedGroupRef = useRef(selectedGroup);
+
+  useEffect(() => {
+    selectedGroupRef.current = selectedGroup;
+  }, [selectedGroup]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAddStudentDialogOpen, setIsAddStudentDialogOpen] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
@@ -91,7 +96,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
       const data = await res.json();
       if (data.success) {
         setGroups(data.groups || []);
-        if (groupId && !selectedGroup) {
+        if (groupId && !selectedGroupRef.current) {
           const group = data.groups.find((g: Group) => g.id === groupId);
           if (group) setSelectedGroup(group);
         }
@@ -99,7 +104,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
     } catch (error) {
       logger.error('Failed to fetch groups:', error);
     }
-  }, [groupId, selectedGroup]);
+  }, [groupId]);
 
   const fetchStudents = useCallback(async (groupIdParam?: string) => {
     if (!groupIdParam) return;
