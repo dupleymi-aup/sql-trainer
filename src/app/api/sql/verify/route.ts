@@ -5,6 +5,7 @@ import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-l
 import { parseAndValidate } from '@/lib/validation';
 import { executeMongoQuery } from '@/lib/mongodb-engine';
 import { logger } from '@/lib/logger';
+import { auth } from '@/lib/auth-internal';
 import type { MongoSchema } from '@/lib/mongodb-engine';
 import { sqlVerifySchema } from '@/lib/sql-schema';
 
@@ -40,12 +41,23 @@ function extractLastSelect(sql: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = (await auth()) as { user?: { id?: string } } | null;
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Rate limit: 20 verification attempts per minute per client
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(request, session.user.id);
     const limitResult = await rateLimit(`verify:${clientId}`, { max: 20, windowMs: RATE_LIMIT_WINDOWS.oneMinute });
     if (!limitResult.success) {
       return NextResponse.json(
-        { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Too many attempts. Try again later' },
+        {
+          success: false,
+          verified: false,
+          userRowCount: 0,
+          expectedRowCount: 0,
+          message: 'Too many attempts. Try again later',
+        },
         { status: 429 },
       );
     }
@@ -58,7 +70,7 @@ export async function POST(request: NextRequest) {
     const task = getTaskById(taskId);
     if (!task) {
       return NextResponse.json(
-        { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
+        { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
         { status: 404 },
       );
     }
@@ -84,7 +96,7 @@ export async function POST(request: NextRequest) {
   } catch (err: unknown) {
     logger.error('SQL verify error:', err);
     return NextResponse.json(
-      { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Internal server error' },
+      { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Internal server error' },
       { status: 500 },
     );
   }
@@ -97,7 +109,7 @@ export async function POST(request: NextRequest) {
 function verifyWithSharedDb(userSql: string, task: ReturnType<typeof getTaskById>, dbType: string): NextResponse {
   if (!task) {
     return NextResponse.json(
-      { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
+      { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
       { status: 404 },
     );
   }
@@ -117,6 +129,7 @@ function verifyWithSharedDb(userSql: string, task: ReturnType<typeof getTaskById
   // Check if user's full query executed successfully
   if (!userResult.success) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount: 0,
       expectedRowCount: 0,

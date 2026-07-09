@@ -3325,7 +3325,7 @@ export function getStudentGradeDistribution(filters?: TimeRangeFilters): GradeDi
     { label: '90–100%', min: 90, max: 100 },
   ];
 
-  const totalTasks = (db.prepare('SELECT COUNT(*) as c FROM training_tasks').get() as { c: number }).c || 56;
+  const totalTasks = TRAINING_TASKS.length;
 
   return brackets.map((b) => {
     const row = db
