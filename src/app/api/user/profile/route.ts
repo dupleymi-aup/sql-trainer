@@ -44,10 +44,19 @@ export const PUT = withUserAuth(async ({ request, session }) => {
     return NextResponse.json({ success: false, error: sanitizedPhone.error }, { status: 400 });
   }
 
-  const updated = await updateUser(session.user.id, {
-    name: sanitizedName?.value ?? name,
-    phone: sanitizedPhone?.value ?? phone,
-  });
+  const updatedFields: { name?: string; phone?: string } = {};
+  if (sanitizedName?.value) {
+    updatedFields.name = sanitizedName.value;
+  }
+  if (sanitizedPhone?.value) {
+    updatedFields.phone = sanitizedPhone.value;
+  }
+
+  if (Object.keys(updatedFields).length === 0) {
+    return NextResponse.json({ success: false, error: 'No valid fields to update' }, { status: 400 });
+  }
+
+  const updated = await updateUser(session.user.id, updatedFields);
   if (!updated) {
     return NextResponse.json({ success: false, error: 'Failed to update profile' }, { status: 500 });
   }

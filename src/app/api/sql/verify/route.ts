@@ -294,6 +294,7 @@ function compareResults(
       colDetail += ` Expected ${expectedColumns.length} columns, got ${userColumns.length}.`;
     }
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount,
       expectedRowCount,
@@ -309,6 +310,7 @@ function compareResults(
 
   if (columnsMatch && dataMatch) {
     return NextResponse.json({
+      success: true,
       verified: true,
       userRowCount,
       expectedRowCount,
@@ -348,6 +350,7 @@ function compareResults(
   }
 
   return NextResponse.json({
+    success: false,
     verified: false,
     userRowCount,
     expectedRowCount,
@@ -362,7 +365,7 @@ function compareResults(
 function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>): NextResponse {
   if (!task) {
     return NextResponse.json(
-      { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
+      { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
       { status: 404 },
     );
   }
@@ -372,7 +375,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
     schema = task.schema ? (JSON.parse(task.schema) as MongoSchema) : {};
   } catch {
     return NextResponse.json(
-      { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task schema error' },
+      { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task schema error' },
       { status: 500 },
     );
   }
@@ -393,6 +396,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
   const solutionResult = executeMongoQuery(task.sampleSolution, schema);
   if (!solutionResult.success) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount: 0,
       expectedRowCount: 0,
@@ -405,6 +409,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
 
   if (userRowCount !== expectedRowCount) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount,
       expectedRowCount,
@@ -418,6 +423,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
 
   if (userJson === expectedJson) {
     return NextResponse.json({
+      success: true,
       verified: true,
       userRowCount,
       expectedRowCount,
@@ -426,6 +432,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
   }
 
   return NextResponse.json({
+    success: false,
     verified: false,
     userRowCount,
     expectedRowCount,

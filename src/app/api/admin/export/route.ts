@@ -1,4 +1,4 @@
-import { requireAdmin } from '@/lib/api-auth';
+import { withAdminAuth } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import {
@@ -39,8 +39,8 @@ function toCSV(columns: string[], rows: Record<string, unknown>[]): string {
   return header + '\n' + body;
 }
 
-function csvResponse(data: string, filename: string): Response {
-  return new Response(data.startsWith('\uFEFF') ? data : '\uFEFF' + data, {
+function csvResponse(data: string, filename: string): NextResponse {
+  return new NextResponse(data.startsWith('\uFEFF') ? data : '\uFEFF' + data, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="${filename}"`,
@@ -48,12 +48,7 @@ function csvResponse(data: string, filename: string): Response {
   });
 }
 
-export async function GET(request: Request): Promise<Response> {
-  const authResult = await requireAdmin();
-  if (!authResult.session) {
-    return authResult.error ?? NextResponse.json({ success: false, error: 'Internal error' }, { status: 500 });
-  }
-
+export const GET = withAdminAuth(async ({ request }) => {
   const url = new URL(request.url);
   const section = url.searchParams.get('section') || 'users';
   const ts = Date.now();
@@ -178,4 +173,4 @@ export async function GET(request: Request): Promise<Response> {
     logger.error('Admin export failed', error);
     return NextResponse.json({ success: false, error: 'Export failed' }, { status: 500 });
   }
-}
+});

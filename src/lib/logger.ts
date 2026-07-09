@@ -29,6 +29,15 @@ interface LogEntry {
 
 const isDev = process.env.NODE_ENV === 'development';
 
+const LOG_LEVELS: Record<LogLevel, number> = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  debug: 3,
+};
+
+const minLogLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || (isDev ? 'debug' : 'info');
+
 function serializeError(error: unknown): LogEntry['error'] {
   if (error instanceof Error) {
     const serialized: LogEntry['error'] = {
@@ -66,6 +75,8 @@ function formatEntry(entry: LogEntry): string {
 }
 
 function log(level: LogLevel, message: string, extra?: Record<string, unknown>, error?: unknown): void {
+  if (LOG_LEVELS[level] > LOG_LEVELS[minLogLevel]) return;
+
   const entry: LogEntry = {
     level,
     message,

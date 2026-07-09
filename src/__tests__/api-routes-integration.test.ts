@@ -27,7 +27,14 @@ vi.mock('@/lib/rate-limit', () => ({
 
 vi.mock('@/lib/csrf', () => ({
   validateCsrfTokenEdge: () => true,
-  csrfErrorResponse: () => new Response(JSON.stringify({ success: false, error: 'CSRF validation failed' }), { status: 403 }),
+  csrfErrorResponse: () =>
+    new Response(JSON.stringify({ success: false, error: 'CSRF validation failed' }), { status: 403 }),
+}));
+
+vi.mock('@/lib/auth-internal', () => ({
+  auth: vi.fn(() =>
+    Promise.resolve({ user: { id: 'test-user', name: 'Test', email: 'test@test.com', role: 'student' } }),
+  ),
 }));
 
 vi.mock('@/lib/sanitization', () => ({

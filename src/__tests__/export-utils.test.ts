@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { exportToCSV, exportToJSON, formatDate, formatPercent, formatNumber } from '@/lib/export-utils';
 

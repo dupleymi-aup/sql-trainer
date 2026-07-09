@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
           key: 'Content-Security-Policy',
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+            "script-src 'self' 'unsafe-inline'",
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob:",
             "font-src 'self'",
@@ -82,18 +82,6 @@ const nextConfig: NextConfig = {
   },
   turbopack: {
     root: process.cwd(),
-    resolveAlias: {
-      '@codemirror/state': '@codemirror/state',
-      '@codemirror/view': '@codemirror/view',
-      '@codemirror/language': '@codemirror/language',
-      '@codemirror/commands': '@codemirror/commands',
-      '@codemirror/search': '@codemirror/search',
-      '@codemirror/autocomplete': '@codemirror/autocomplete',
-      '@codemirror/lang-sql': '@codemirror/lang-sql',
-      '@codemirror/theme-one-dark': '@codemirror/theme-one-dark',
-      '@lezer/highlight': '@lezer/highlight',
-      '@lezer/common': '@lezer/common',
-    },
   },
 };
 

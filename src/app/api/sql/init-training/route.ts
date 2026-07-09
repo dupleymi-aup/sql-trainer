@@ -3,6 +3,7 @@ import { getTaskById, TRAINING_TASKS } from '@/lib/training-tasks';
 import { getSchemaInfo } from '@/lib/sql-engine';
 import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
+import { auth } from '@/lib/auth-internal';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
 
@@ -13,8 +14,13 @@ const initTrainingSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const session = (await auth()) as { user?: { id?: string } } | null;
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Rate limit: 20 init requests per minute per client
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(request, session.user.id);
     const limitResult = await rateLimit(`init-training:${clientId}`, {
       max: 20,
       windowMs: RATE_LIMIT_WINDOWS.oneMinute,
@@ -75,8 +81,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: Request) {
   try {
+    const session = (await auth()) as { user?: { id?: string } } | null;
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Rate limit: 10 task list requests per minute per client
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(request, session.user.id);
     const limitResult = await rateLimit(`init-training-list:${clientId}`, {
       max: 10,
       windowMs: RATE_LIMIT_WINDOWS.oneMinute,

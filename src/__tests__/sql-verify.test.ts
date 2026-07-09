@@ -28,6 +28,12 @@ vi.mock('@/lib/rate-limit', () => ({
   RATE_LIMIT_WINDOWS: { oneMinute: 60_000, tenMinutes: 600_000, fifteenMinutes: 900_000, oneHour: 3_600_000 },
 }));
 
+vi.mock('@/lib/auth-internal', () => ({
+  auth: vi.fn(() =>
+    Promise.resolve({ user: { id: 'test-user', name: 'Test', email: 'test@test.com', role: 'student' } }),
+  ),
+}));
+
 vi.mock('@/lib/validation', () => ({
   validateBody: vi.fn((body, schema) => {
     const result = schema.safeParse(body);

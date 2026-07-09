@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { t, setLocale, getLocale, translations, type Locale } from '@/lib/i18n';
 

@@ -36,7 +36,6 @@ const eslintConfig = [
       '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/ban-ts-comment': 'warn',
       '@typescript-eslint/prefer-as-const': 'warn',
-      '@typescript-eslint/no-unused-disable-directive': 'off',
 
       // React rules
       'react-hooks/exhaustive-deps': 'warn',

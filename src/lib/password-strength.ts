@@ -2,6 +2,7 @@
  * Password strength evaluator — pure logic without UI concerns.
  * Used by auth forms and profile page to avoid duplication.
  */
+import { z } from 'zod';
 
 export interface PasswordStrength {
   score: number;
@@ -33,3 +34,16 @@ export function evaluatePasswordStrength(password: string): PasswordStrength {
 
   return { score, level, checks };
 }
+
+/**
+ * Shared Zod schema for password validation.
+ * Requires 8+ chars, at least one uppercase, lowercase, digit, and special char.
+ */
+export const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(128, 'Password is too long (max 128 characters)')
+  .refine((val) => /[A-Z]/.test(val), 'Password must contain an uppercase letter')
+  .refine((val) => /[a-z]/.test(val), 'Password must contain a lowercase letter')
+  .refine((val) => /\d/.test(val), 'Password must contain a digit')
+  .refine((val) => /[^A-Za-z0-9]/.test(val), 'Password must contain a special character');
