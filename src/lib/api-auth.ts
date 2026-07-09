@@ -170,7 +170,9 @@ function withRoleAuth(
 
         // Wrap success response with success: true envelope
         if (response.ok) {
-          const body = await response.json();
+          // Clone before reading to avoid consuming the response body
+          const cloned = response.clone();
+          const body = await cloned.json();
           if (!('success' in body)) {
             return withRateLimitHeaders(NextResponse.json({ success: true, ...body }), limitResult);
           }
@@ -252,7 +254,9 @@ export function withAnalyticsAuth(handler: (ctx: AnalyticsHandlerContext) => Nex
 
       // Wrap success response with success: true envelope
       if (response.ok) {
-        const body = await response.json();
+        // Clone before reading to avoid consuming the response body
+        const cloned = response.clone();
+        const body = await cloned.json();
         if (!('success' in body)) {
           const wrapped = NextResponse.json({ success: true, ...body });
           return withRateLimitHeaders(wrapped, limitResult);
