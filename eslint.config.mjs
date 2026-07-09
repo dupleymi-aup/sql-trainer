@@ -94,21 +94,7 @@ const eslintConfig = [
       'no-unused-vars': 'off',
     },
   },
-  {
-    // db-users.ts has legacy analytics code — warn instead of error
-    files: ['src/lib/db-users.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-unused-vars': [
-        'warn',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
-        },
-      ],
-    },
-  },
+
   {
     ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts', '_archive_extracted/**'],
   },

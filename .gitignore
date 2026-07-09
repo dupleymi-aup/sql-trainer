@@ -60,3 +60,5 @@ server.log
 # archives
 _archive_extracted/
 *.zip
+
+.mimocode/

@@ -171,7 +171,9 @@ function isSelectQuery(sql: string): boolean {
     trimmed.startsWith('SELECT') ||
     trimmed.startsWith('PRAGMA') ||
     trimmed.startsWith('EXPLAIN') ||
-    trimmed.startsWith('WITH')
+    trimmed.startsWith('WITH') ||
+    // DML with RETURNING clause (INSERT/UPDATE/DELETE ... RETURNING)
+    (trimmed.includes('RETURNING') && trimmed.includes(' '))
   );
 }
 

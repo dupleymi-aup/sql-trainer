@@ -73,7 +73,7 @@ jobs:
       - name: Check for console.log statements
         run: |
           echo "Checking for console.log statements in production code..."
-          console_count=$(grep -r "console\.\(log\|warn\|error\)" --include="*.ts" --include="*.tsx" src/ 2>/dev/null | grep -v "node_modules" | grep -v ".test." | wc -l)
+          console_count=$(grep -r "console\.\(log\|warn\|error\)" --include="*.ts" --include="*.tsx" src/ 2>/dev/null | grep -v "node_modules" | grep -v ".test." | grep -v "logger.ts" | wc -l)
           if [ "$console_count" -gt 0 ]; then
             echo "Found $console_count console.log/warn/error statements in production code."
             echo "   Consider using the logger from '@/lib/logger' instead."
