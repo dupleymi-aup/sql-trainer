@@ -1,12 +1,11 @@
-import { rateLimit, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
+import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { GET, POST as nextAuthPost } from '@/lib/auth-internal';
 import { NextResponse, type NextRequest } from 'next/server';
 
 async function POST(request: Request) {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const ip = forwarded?.split(',')[0]?.trim() || 'unknown';
+  const clientId = getClientIdentifier(request);
 
-  const limitResult = await rateLimit(`login:${ip}`, { max: 10, windowMs: RATE_LIMIT_WINDOWS.fifteenMinutes });
+  const limitResult = await rateLimit(`login:${clientId}`, { max: 10, windowMs: RATE_LIMIT_WINDOWS.fifteenMinutes });
   if (!limitResult.success) {
     return NextResponse.json(
       { success: false, error: 'Too many login attempts. Please try again later.' },

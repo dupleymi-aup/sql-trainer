@@ -147,6 +147,7 @@ function verifyWithSharedDb(userSql: string, task: ReturnType<typeof getTaskById
 
     if (!applyUserDml.success) {
       return NextResponse.json({
+        success: false,
         verified: false,
         userRowCount: 0,
         expectedRowCount: 0,
@@ -161,6 +162,7 @@ function verifyWithSharedDb(userSql: string, task: ReturnType<typeof getTaskById
 
     const verified = expectedRowCount > 0;
     return NextResponse.json({
+      success: true,
       verified,
       userRowCount: expectedRowCount,
       expectedRowCount,
@@ -179,7 +181,7 @@ function verifyWithSharedDb(userSql: string, task: ReturnType<typeof getTaskById
 function verifySelectOnly(sql: string, task: ReturnType<typeof getTaskById>, dbType: string): NextResponse {
   if (!task) {
     return NextResponse.json(
-      { verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
+      { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: 'Task not found' },
       { status: 404 },
     );
   }
@@ -189,6 +191,7 @@ function verifySelectOnly(sql: string, task: ReturnType<typeof getTaskById>, dbT
 
   if (!userResult.success) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount: 0,
       expectedRowCount: 0,
@@ -218,6 +221,7 @@ function verifySelectOnly(sql: string, task: ReturnType<typeof getTaskById>, dbT
     const userRowCount = userResult.rows.length;
     const verified = userRowCount === expectedRowCount && userRowCount > 0;
     return NextResponse.json({
+      success: true,
       verified,
       userRowCount,
       expectedRowCount,
@@ -251,6 +255,7 @@ function compareResults(
       detail = `Query returned ${userRowCount} rows, expected ${expectedRowCount}. Possibly some rows missing in WHERE condition.`;
     }
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount,
       expectedRowCount,
@@ -260,6 +265,7 @@ function compareResults(
 
   if (userRowCount === 0) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount: 0,
       expectedRowCount: 0,
@@ -375,6 +381,7 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
   const userResult = executeMongoQuery(userQuery, schema);
   if (!userResult.success) {
     return NextResponse.json({
+      success: false,
       verified: false,
       userRowCount: 0,
       expectedRowCount: 0,
