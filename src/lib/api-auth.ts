@@ -157,13 +157,25 @@ function withRoleAuth(
       const rl = overrideRateLimit ?? defaultRateLimit;
       const limitResult = await rateLimit(`${rateLimitPrefix}:${userId}`, rl);
       if (!limitResult.success) {
-        return withRateLimitHeaders(NextResponse.json({ success: false, error: t(RATE_LIMIT_MESSAGE) }, { status: 429 }), limitResult);
+        return withRateLimitHeaders(
+          NextResponse.json({ success: false, error: t(RATE_LIMIT_MESSAGE) }, { status: 429 }),
+          limitResult,
+        );
       }
 
       const params = await resolveParams(context);
 
       try {
         const response = await handler({ session: authResult.session, request, params });
+
+        // Wrap success response with success: true envelope
+        if (response.ok) {
+          const body = await response.json();
+          if (!('success' in body)) {
+            return withRateLimitHeaders(NextResponse.json({ success: true, ...body }), limitResult);
+          }
+        }
+
         return withRateLimitHeaders(response, limitResult);
       } catch (error) {
         logger.error(`${errorLabel} handler error:`, error);
@@ -216,7 +228,10 @@ export function withAnalyticsAuth(handler: (ctx: AnalyticsHandlerContext) => Nex
     const userId = authResult.session.user.id;
     const limitResult = await rateLimit(`analytics:${userId}`, { max: 30, windowMs: 60_000 });
     if (!limitResult.success) {
-      return withRateLimitHeaders(NextResponse.json({ success: false, error: t(RATE_LIMIT_MESSAGE) }, { status: 429 }), limitResult);
+      return withRateLimitHeaders(
+        NextResponse.json({ success: false, error: t(RATE_LIMIT_MESSAGE) }, { status: 429 }),
+        limitResult,
+      );
     }
 
     const url = new URL(request.url);
@@ -234,6 +249,16 @@ export function withAnalyticsAuth(handler: (ctx: AnalyticsHandlerContext) => Nex
         endDate,
         searchParams,
       });
+
+      // Wrap success response with success: true envelope
+      if (response.ok) {
+        const body = await response.json();
+        if (!('success' in body)) {
+          const wrapped = NextResponse.json({ success: true, ...body });
+          return withRateLimitHeaders(wrapped, limitResult);
+        }
+      }
+
       return withRateLimitHeaders(response, limitResult);
     } catch (error) {
       logger.error('Analytics handler error:', error);
