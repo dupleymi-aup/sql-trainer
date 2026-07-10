@@ -76,6 +76,81 @@ export async function findUserByEmail(email: string): Promise<{
   }
 }
 
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_DURATIONS = [5 * 60 * 1000, 15 * 60 * 1000, 60 * 60 * 1000]; // 5min, 15min, 1hr
+
+function getLockoutDuration(failedAttempts: number): number {
+  if (failedAttempts >= 15) return LOCKOUT_DURATIONS[2];
+  if (failedAttempts >= 10) return LOCKOUT_DURATIONS[1];
+  return LOCKOUT_DURATIONS[0];
+}
+
+function recordFailedLogin(userId: string): void {
+  const db = getDb();
+  const user = db.prepare('SELECT failed_login_attempts FROM users WHERE id = ?').get(userId) as
+    | { failed_login_attempts: number }
+    | undefined;
+  if (!user) return;
+  const attempts = (user.failed_login_attempts || 0) + 1;
+  if (attempts >= LOCKOUT_THRESHOLD) {
+    const duration = getLockoutDuration(attempts);
+    db.prepare('UPDATE users SET failed_login_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?').run(
+      attempts,
+      Date.now() + duration,
+      Date.now(),
+      userId,
+    );
+  } else {
+    db.prepare('UPDATE users SET failed_login_attempts = ?, updated_at = ? WHERE id = ?').run(
+      attempts,
+      Date.now(),
+      userId,
+    );
+  }
+}
+
+function resetFailedLogins(userId: string): void {
+  const db = getDb();
+  db.prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?').run(
+    Date.now(),
+    userId,
+  );
+}
+
+/**
+ * Check if an account is locked due to too many failed login attempts.
+ * Returns null if the account is not locked, or the remaining lockout time in seconds.
+ */
+export function getLoginLockStatus(email: string): { remainingSeconds: number; message: string } | null {
+  try {
+    const db = getDb();
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = db
+      .prepare('SELECT locked_until, failed_login_attempts FROM users WHERE email = ?')
+      .get(normalizedEmail) as { locked_until: number | null; failed_login_attempts: number } | undefined;
+    if (!user?.locked_until) return null;
+    const remainingMs = user.locked_until - Date.now();
+    if (remainingMs <= 0) {
+      // Lock expired — reset it
+      db.prepare('UPDATE users SET locked_until = NULL, updated_at = ? WHERE email = ?').run(
+        Date.now(),
+        normalizedEmail,
+      );
+      return null;
+    }
+    const remainingSeconds = Math.ceil(remainingMs / 1000);
+    const minutes = Math.ceil(remainingSeconds / 60);
+    const message =
+      minutes >= 60
+        ? `Account locked. Try again in about ${Math.ceil(minutes / 60)} hour(s).`
+        : `Account locked. Try again in ${minutes} minute(s).`;
+    return { remainingSeconds, message };
+  } catch (error) {
+    logger.error('getLoginLockStatus failed:', error);
+    return null;
+  }
+}
+
 export async function verifyPassword(
   email: string,
   password: string,
@@ -89,11 +164,36 @@ export async function verifyPassword(
   banned_at: number | null;
 } | null> {
   try {
-    const user = await findUserByEmail(email);
+    const db = getDb();
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = db
+      .prepare(
+        'SELECT id, email, name, phone, password_hash, role, role_changed_at, banned_at, locked_until, failed_login_attempts FROM users WHERE email = ?',
+      )
+      .get(normalizedEmail) as
+      | {
+          id: string;
+          email: string;
+          name: string;
+          phone: string | null;
+          password_hash: string;
+          role: UserRole;
+          role_changed_at: number | null;
+          banned_at: number | null;
+          locked_until: number | null;
+          failed_login_attempts: number;
+        }
+      | undefined;
     if (!user) return null;
     if (user.banned_at) return null;
+    if (user.locked_until && user.locked_until > Date.now()) return null;
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return null;
+    if (!valid) {
+      recordFailedLogin(user.id);
+      return null;
+    }
+    // Successful login — reset failed attempts
+    resetFailedLogins(user.id);
     return {
       id: user.id,
       email: user.email,

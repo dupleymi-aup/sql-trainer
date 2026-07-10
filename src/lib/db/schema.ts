@@ -316,6 +316,14 @@ export function initDatabase(): void {
     db.exec('ALTER TABLE users ADD COLUMN banned_by TEXT DEFAULT NULL');
   }
 
+  if (!columns.some((c) => c.name === 'failed_login_attempts')) {
+    db.exec('ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0');
+  }
+
+  if (!columns.some((c) => c.name === 'locked_until')) {
+    db.exec('ALTER TABLE users ADD COLUMN locked_until INTEGER DEFAULT NULL');
+  }
+
   try {
     const deadlineColumns = db.pragma('table_info(deadlines)') as { name: string }[];
     if (!deadlineColumns.some((c) => c.name === 'group_id')) {

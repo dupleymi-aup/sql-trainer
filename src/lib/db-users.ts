@@ -22,6 +22,7 @@ export {
   updatePassword,
   createResetCode,
   verifyResetCode,
+  getLoginLockStatus,
 } from './db/users';
 export {
   saveUserProgress,

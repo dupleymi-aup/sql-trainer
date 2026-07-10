@@ -1,5 +1,6 @@
 import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { GET, POST as nextAuthPost } from '@/lib/auth-internal';
+import { getLoginLockStatus } from '@/lib/db-users';
 import { NextResponse, type NextRequest } from 'next/server';
 
 async function POST(request: Request) {
@@ -19,6 +20,17 @@ async function POST(request: Request) {
         },
       },
     );
+  }
+
+  // Check if account is locked before consuming the request body
+  const cloned = request.clone();
+  const body = await cloned.json().catch(() => ({}));
+  const email = body?.email as string | undefined;
+  if (email) {
+    const lockStatus = getLoginLockStatus(email);
+    if (lockStatus) {
+      return NextResponse.json({ success: false, error: lockStatus.message }, { status: 423 });
+    }
   }
 
   const response = await nextAuthPost(request as NextRequest);
