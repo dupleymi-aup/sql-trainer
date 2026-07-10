@@ -105,9 +105,10 @@ export default function ResultsTable({
   const copyResults = useCallback(() => {
     const header = columns.join('\t');
     const data = sortedRows.map((row) => columns.map((col) => formatCellValue(row[col])).join('\t')).join('\n');
-    navigator.clipboard.writeText(header + '\n' + data).then(() => {
-      toast.success(t('results.copied'));
-    });
+    navigator.clipboard.writeText(header + '\n' + data).then(
+      () => toast.success(t('results.copied')),
+      () => toast.error(t('results.copyFailed', { default: 'Failed to copy' })),
+    );
   }, [columns, sortedRows]);
 
   const exportCSV = useCallback(() => {
@@ -177,8 +178,10 @@ export default function ResultsTable({
               <span className="font-medium">{t('results.queryError')}</span>
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(error);
-                  toast.success(t('results.errorCopied', { default: 'Error copied to clipboard' }));
+                  navigator.clipboard.writeText(error).then(
+                    () => toast.success(t('results.errorCopied', { default: 'Error copied to clipboard' })),
+                    () => toast.error(t('results.copyFailed', { default: 'Failed to copy' })),
+                  );
                 }}
                 className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/10 transition-colors"
               >

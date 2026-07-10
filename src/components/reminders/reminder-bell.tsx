@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { Bell } from 'lucide-react';
 import { t } from '@/lib/i18n';
@@ -29,15 +29,20 @@ export function ReminderBell() {
   const { data: session } = useSession();
   const [reminders, setReminders] = useState<PendingReminder[]>([]);
   const [open, setOpen] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchReminders = useCallback(async () => {
     if (!session?.user?.id) return;
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const res = await fetch('/api/user/reminders');
+      const res = await fetch('/api/user/reminders', { signal: controller.signal });
       const data = await res.json();
       if (res.ok) setReminders(data.reminders || []);
       else throw new Error(data.error || t('reminder.loadFailed'));
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       toast.error(err instanceof Error ? err.message : t('teacher.error'));
     }
   }, [session?.user?.id]);
@@ -45,7 +50,10 @@ export function ReminderBell() {
   useEffect(() => {
     fetchReminders();
     const interval = setInterval(fetchReminders, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      abortRef.current?.abort();
+    };
   }, [session?.user?.id, fetchReminders]);
 
   if (!session) return null;

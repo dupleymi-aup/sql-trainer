@@ -16,9 +16,14 @@ function sendMetric(metric: Metric) {
   });
 
   if (navigator.sendBeacon) {
-    navigator.sendBeacon('/api/web-vitals', body);
+    navigator.sendBeacon('/api/web-vitals', new Blob([body], { type: 'application/json' }));
   } else {
-    fetch('/api/web-vitals', { body, method: 'POST', keepalive: true });
+    fetch('/api/web-vitals', {
+      body,
+      method: 'POST',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 

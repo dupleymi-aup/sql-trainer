@@ -180,11 +180,14 @@ export default function SQLReference({ onInsertExample }: SQLReferenceProps) {
   };
 
   const handleCopy = (code: string, index: string) => {
-    navigator.clipboard.writeText(code).then(() => {
-      toast.success(t('sqlRef.copied'));
-      setCopiedIndex(index);
-      resetCopiedState();
-    });
+    navigator.clipboard.writeText(code).then(
+      () => {
+        toast.success(t('sqlRef.copied'));
+        setCopiedIndex(index);
+        resetCopiedState();
+      },
+      () => toast.error(t('results.copyFailed', { default: 'Failed to copy' })),
+    );
   };
 
   const handleInsert = (code: string, key: string) => {

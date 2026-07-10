@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { useSQLTrainerStore } from '@/lib/store';
@@ -46,6 +46,17 @@ export function useQueryExecutor({
     nextPracticeTask,
     incrementExplainCount,
   } = useSQLTrainerStore();
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (practiceTimerRef.current) {
+        clearTimeout(practiceTimerRef.current);
+        practiceTimerRef.current = null;
+      }
+      progressSyncRef.current?.abort();
+    };
+  }, []);
 
   const handleVerifiedTask = useCallback(
     (verifyData: { verified: boolean; message?: string }) => {
