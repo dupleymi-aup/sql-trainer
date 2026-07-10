@@ -1,6 +1,6 @@
 import { withTeacherAuth } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { apiServerError } from '@/lib/api-error';
 import { getGroupsByTeacherId, createGroup } from '@/lib/db-users';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
@@ -30,7 +30,6 @@ export const POST = withTeacherAuth(async ({ session, request }) => {
 
     return NextResponse.json({ success: true, group });
   } catch (error) {
-    logger.error('Error creating group:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Create group', undefined, error);
   }
 });

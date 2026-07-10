@@ -4,7 +4,7 @@ import { RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
 import { savePushSubscription } from '@/lib/db-users';
-import { logger } from '@/lib/logger';
+import { apiServerError } from '@/lib/api-error';
 
 const pushSubscribeSchema = z.object({
   subscription: z.object({
@@ -30,8 +30,7 @@ export const POST = withUserAuthStrict(
         auth: subscription.keys.auth,
       });
     } catch (dbError) {
-      logger.error('savePushSubscription failed:', dbError);
-      return NextResponse.json({ success: false, error: 'Failed to save subscription' }, { status: 500 });
+      return apiServerError('Save push subscription', undefined, dbError);
     }
 
     return NextResponse.json({ success: true });

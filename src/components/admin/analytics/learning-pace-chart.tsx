@@ -28,17 +28,19 @@ export default function LearningPaceChart() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadData = async () => {
       setLoading(true);
       try {
         const params = new URLSearchParams();
         if (startDate) params.set('startDate', String(startDate));
         if (endDate) params.set('endDate', String(endDate));
-        const res = await fetch(`/api/admin/analytics/learning-pace?${params}`);
+        const res = await fetch(`/api/admin/analytics/learning-pace?${params}`, { signal: controller.signal });
         if (!res.ok) throw new Error('Failed to load');
         const json = await res.json();
         setData(json.pace || []);
       } catch (err) {
+        if (controller.signal.aborted) return;
         logger.error('Learning pace fetch failed', err);
         setError(t('analytics.error'));
       } finally {
@@ -46,6 +48,7 @@ export default function LearningPaceChart() {
       }
     };
     loadData();
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;

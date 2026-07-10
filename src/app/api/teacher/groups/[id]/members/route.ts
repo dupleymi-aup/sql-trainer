@@ -1,6 +1,6 @@
 import { withTeacherAuth } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { apiServerError } from '@/lib/api-error';
 import { getGroupById, addGroupMembers, removeGroupMember, getGroupMembers } from '@/lib/db-users';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
@@ -34,8 +34,7 @@ export const POST = withTeacherAuth(async ({ session, request, params }) => {
 
     return NextResponse.json({ success: true, added, members });
   } catch (error) {
-    logger.error('Error adding group members:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Add group members', undefined, error);
   }
 });
 
@@ -69,7 +68,6 @@ export const DELETE = withTeacherAuth(async ({ session, request, params }) => {
 
     return NextResponse.json({ success: true, members });
   } catch (error) {
-    logger.error('Error removing group member:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Remove group member', undefined, error);
   }
 });

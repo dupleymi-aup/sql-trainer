@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
 import { rateLimit, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
+import { apiServerError } from '@/lib/api-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +33,6 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (err) {
-    logger.error('WebVitals POST error', err);
-    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
+    return apiServerError('WebVitals POST', undefined, err);
   }
 }

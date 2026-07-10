@@ -17,7 +17,9 @@ import { logger } from '@/lib/logger';
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const rawCallback = searchParams.get('callbackUrl') || '/';
+  // Prevent open redirect: only allow relative paths on the same origin
+  const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

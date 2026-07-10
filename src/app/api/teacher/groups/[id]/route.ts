@@ -1,6 +1,6 @@
 import { withTeacherAuth } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { apiServerError } from '@/lib/api-error';
 import { getGroupById, updateGroup, deleteGroup, getGroupMembers } from '@/lib/db-users';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
@@ -30,8 +30,7 @@ export const GET = withTeacherAuth(async ({ session, params }) => {
     const members = getGroupMembers(id);
     return NextResponse.json({ success: true, group: { ...group, members } });
   } catch (error) {
-    logger.error('Error fetching group:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Fetch group', undefined, error);
   }
 });
 
@@ -66,8 +65,7 @@ export const PATCH = withTeacherAuth(async ({ session, request, params }) => {
 
     return NextResponse.json({ success: true, group });
   } catch (error) {
-    logger.error('Error updating group:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Update group', undefined, error);
   }
 });
 
@@ -91,7 +89,6 @@ export const DELETE = withTeacherAuth(async ({ session, params }) => {
     deleteGroup(id, session.user.id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error('Error deleting group:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Delete group', undefined, error);
   }
 });
