@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getTaskById, TRAINING_TASKS } from '@/lib/training-tasks';
 import { getSchemaInfo } from '@/lib/sql-engine';
 import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
-import { logger } from '@/lib/logger';
 import { auth } from '@/lib/auth-internal';
 import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
+import { apiServerError } from '@/lib/api-error';
 
 const initTrainingSchema = z.object({
   taskId: z.string().min(1, 'taskId is required'),
@@ -74,8 +74,7 @@ export async function POST(request: NextRequest) {
       schema: schemaInfo,
     });
   } catch (err: unknown) {
-    logger.error('SQL init-training POST error:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('SQL init-training POST', undefined, err);
   }
 }
 
@@ -107,7 +106,6 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, tasks: tasksList });
   } catch (err: unknown) {
-    logger.error('SQL init-training GET error:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('SQL init-training GET', undefined, err);
   }
 }

@@ -39,6 +39,7 @@ export default function TaskPerformanceChart() {
         if (startDate) params.set('startDate', String(startDate));
         if (endDate) params.set('endDate', String(endDate));
         const res = await fetch(`/api/admin/analytics/task-performance?${params}`);
+        if (!res.ok) throw new Error('Failed to load');
         const json = await res.json();
         setData(json.tasks || []);
       } catch (err) {

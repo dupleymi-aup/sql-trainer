@@ -35,6 +35,7 @@ export default function LearningPaceChart() {
         if (startDate) params.set('startDate', String(startDate));
         if (endDate) params.set('endDate', String(endDate));
         const res = await fetch(`/api/admin/analytics/learning-pace?${params}`);
+        if (!res.ok) throw new Error('Failed to load');
         const json = await res.json();
         setData(json.pace || []);
       } catch (err) {

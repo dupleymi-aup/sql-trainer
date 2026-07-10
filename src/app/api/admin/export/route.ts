@@ -1,6 +1,6 @@
 import { withAdminAuth } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
-import { logger } from '@/lib/logger';
+import { apiServerError } from '@/lib/api-error';
 import {
   getDBStats,
   getAllUsers,
@@ -170,7 +170,6 @@ export const GET = withAdminAuth(async ({ request }) => {
         return NextResponse.json({ success: false, error: 'Invalid section' }, { status: 400 });
     }
   } catch (error) {
-    logger.error('Admin export failed', error);
-    return NextResponse.json({ success: false, error: 'Export failed' }, { status: 500 });
+    return apiServerError('Admin export', undefined, error);
   }
 });

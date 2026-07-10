@@ -3,9 +3,9 @@ import { explainQuery } from '@/lib/sql-engine';
 import { getTaskById } from '@/lib/training-tasks';
 import { parseAndValidate } from '@/lib/validation';
 import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
-import { logger } from '@/lib/logger';
 import { sqlExplainSchema, VALID_DB_TYPES } from '@/lib/sql-schema';
 import { validateTrainingSql } from '@/lib/sql-safety';
+import { apiServerError } from '@/lib/api-error';
 
 /**
  * Analyze EXPLAIN plan and return performance suggestions.
@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (err: unknown) {
-    logger.error('SQL explain error:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('SQL explain', undefined, err);
   }
 }

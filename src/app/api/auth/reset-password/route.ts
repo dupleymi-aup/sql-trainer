@@ -7,6 +7,7 @@ import { escapeHtml } from '@/lib/html-utils';
 import { getUserEmail } from '@/lib/email';
 import { parseAndValidate } from '@/lib/validation';
 import { validateCsrfTokenEdge, csrfErrorResponse } from '@/lib/csrf';
+import { apiServerError } from '@/lib/api-error';
 
 const resetRequestSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -80,8 +81,7 @@ export async function POST(request: NextRequest) {
       message: 'If the email is registered, a recovery code has been sent',
     });
   } catch (err: unknown) {
-    logger.error('Reset password POST error:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Reset password POST', undefined, err);
   }
 }
 
@@ -121,7 +121,6 @@ export async function PUT(request: NextRequest) {
       message: 'Password changed successfully',
     });
   } catch (err: unknown) {
-    logger.error('Reset password PUT error:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return apiServerError('Reset password PUT', undefined, err);
   }
 }

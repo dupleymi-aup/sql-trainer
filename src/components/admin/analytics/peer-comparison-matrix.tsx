@@ -48,15 +48,15 @@ export default function PeerComparisonMatrix() {
         if (!r.ok) throw new Error('Failed to load');
         return r.json();
       })
-      .then((data) => {
-        setData(data.comparisons);
-        if (data.comparisons.length > 0 && !selectedStudent) {
-          setSelectedStudent(data.comparisons[0].user_id);
+      .then((result) => {
+        setData(result.comparisons);
+        if (result.comparisons.length > 0) {
+          setSelectedStudent((prev) => prev || result.comparisons[0].user_id);
         }
       })
       .catch(() => setError(t('analytics.error')))
       .finally(() => setLoading(false));
-  }, [startDate, endDate, selectedStudent]);
+  }, [startDate, endDate]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error) {
