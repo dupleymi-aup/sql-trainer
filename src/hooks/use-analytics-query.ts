@@ -57,9 +57,13 @@ export function useAnalyticsQuery<T = unknown>({
   const [refetchCounter, setRefetchCounter] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const transformRef = useRef(transform);
+  const paramsRef = useRef(params);
   useEffect(() => {
     transformRef.current = transform;
   }, [transform]);
+  useEffect(() => {
+    paramsRef.current = params;
+  }, [params]);
   const { startDate, endDate } = useDateRange();
   const paramsKey = JSON.stringify(params);
 
@@ -77,7 +81,7 @@ export function useAnalyticsQuery<T = unknown>({
     const searchParams = new URLSearchParams();
     if (startDate) searchParams.set('startDate', String(startDate));
     if (endDate) searchParams.set('endDate', String(endDate));
-    for (const [key, value] of Object.entries(params)) {
+    for (const [key, value] of Object.entries(paramsRef.current)) {
       searchParams.set(key, String(value));
     }
 
@@ -110,7 +114,7 @@ export function useAnalyticsQuery<T = unknown>({
           setLoading(false);
         }
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCounter triggers manual refetch
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCounter intentionally triggers re-fetch
   }, [endpoint, dataKey, startDate, endDate, paramsKey, refetchCounter]);
 
   useEffect(() => {

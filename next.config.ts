@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   serverExternalPackages: ['better-sqlite3', 'ioredis'],
+  outputFileTracingExcludes: {
+    '/api/**': ['data/**'],
+  },
   // Force body size limit for API routes (1MB default)
   experimental: {
     serverActions: {

@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['src/__tests__/**/*.test.ts', 'src/__tests__/**/*.test.tsx'],
+    setupFiles: ['src/__tests__/vitest-setup.ts'],
     env: {
       AUTH_SECRET: 'test-secret-for-csrf-unit-tests',
       LOG_LEVEL: 'debug',
