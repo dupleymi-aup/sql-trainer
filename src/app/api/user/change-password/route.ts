@@ -5,13 +5,11 @@ import { RATE_LIMIT_WINDOWS } from '@/lib/rate-limit';
 import { findUserByIdWithHash, updatePassword } from '@/lib/db-users';
 import bcrypt from 'bcryptjs';
 import { parseAndValidate } from '@/lib/validation';
+import { passwordSchema } from '@/lib/password-strength';
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
-  newPassword: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password is too long (max 128 characters)'),
+  newPassword: passwordSchema,
 });
 
 export const POST = withUserAuthStrict(

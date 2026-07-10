@@ -8,6 +8,7 @@ import { getUserEmail } from '@/lib/email';
 import { parseAndValidate } from '@/lib/validation';
 import { validateCsrfTokenEdge, csrfErrorResponse } from '@/lib/csrf';
 import { apiServerError } from '@/lib/api-error';
+import { passwordSchema } from '@/lib/password-strength';
 
 const resetRequestSchema = z.object({
   email: z.string().email('Invalid email'),
@@ -15,10 +16,7 @@ const resetRequestSchema = z.object({
 
 const resetConfirmSchema = z.object({
   code: z.string().min(1, 'Code is required'),
-  newPassword: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password is too long (max 128 characters)'),
+  newPassword: passwordSchema,
 });
 
 // Request password reset code

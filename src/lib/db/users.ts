@@ -13,7 +13,8 @@ export async function createUser(
 ): Promise<{ id: string; email: string; name: string; phone: string | null; role: UserRole } | null> {
   try {
     const db = getDb();
-    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const normalizedEmail = email.toLowerCase().trim();
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
     if (existing) return null;
 
     if (!VALID_ROLES.includes(role)) {
@@ -26,13 +27,13 @@ export async function createUser(
 
     db.prepare(
       'INSERT INTO users (id, email, name, password_hash, phone, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    ).run(id, email, name, hash, phone || null, role, now, now);
+    ).run(id, normalizedEmail, name, hash, phone || null, role, now, now);
 
     if (actorId) {
-      logAudit(actorId, 'user_created', 'user', id, JSON.stringify({ email, name, role }));
+      logAudit(actorId, 'user_created', 'user', id, JSON.stringify({ email: normalizedEmail, name, role }));
     }
 
-    return { id, email, name, phone: phone || null, role };
+    return { id, email: normalizedEmail, name, phone: phone || null, role };
   } catch (error) {
     logger.error('createUser failed:', error);
     return null;
@@ -51,11 +52,12 @@ export async function findUserByEmail(email: string): Promise<{
 } | null> {
   try {
     const db = getDb();
+    const normalizedEmail = email.toLowerCase().trim();
     const user = db
       .prepare(
         'SELECT id, email, name, phone, password_hash, role, role_changed_at, banned_at FROM users WHERE email = ?',
       )
-      .get(email) as
+      .get(normalizedEmail) as
       | {
           id: string;
           email: string;
@@ -217,9 +219,13 @@ export async function updatePassword(userId: string, newPassword: string): Promi
 export async function createResetCode(userId: string, type: 'email' | 'phone'): Promise<string> {
   try {
     const db = getDb();
-    const cryptoArray = new Uint32Array(1);
-    crypto.getRandomValues(cryptoArray);
-    const code = (100000 + (cryptoArray[0] % 900000)).toString();
+    // 8-character alphanumeric code (62^8 = ~218 trillion combinations)
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    const array = new Uint32Array(8);
+    crypto.getRandomValues(array);
+    const code = Array.from(array)
+      .map((n) => chars[n % chars.length])
+      .join('');
     const id = crypto.randomUUID();
     const expiresAt = Date.now() + 15 * 60 * 1000;
 

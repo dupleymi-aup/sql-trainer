@@ -7,14 +7,12 @@ import { sanitizeName, sanitizePhone } from '@/lib/sanitization';
 import { apiServerError } from '@/lib/api-error';
 import { parseAndValidate } from '@/lib/validation';
 import { validateCsrfTokenEdge, csrfErrorResponse } from '@/lib/csrf';
+import { passwordSchema } from '@/lib/password-strength';
 
 const registerSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name is too long'),
   email: z.string().email('Invalid email'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .max(128, 'Password is too long (max 128 characters)'),
+  password: passwordSchema,
   phone: z.string().optional().or(z.literal('')),
   role: z.enum(['student'] as [string, ...string[]]).optional(),
 });
@@ -41,6 +39,9 @@ export async function POST(request: NextRequest) {
 
     const { name, email, password, phone, role } = result.data;
 
+    // Normalize email to lowercase
+    const normalizedEmail = email.toLowerCase().trim();
+
     const sanitizedName = sanitizeName(name);
     if (sanitizedName.error) {
       return NextResponse.json({ success: false, error: sanitizedName.error }, { status: 400 });
@@ -54,7 +55,13 @@ export async function POST(request: NextRequest) {
     // Always default to 'student' for self-registration
     const userRole: UserRole = (role as UserRole) ?? 'student';
 
-    const user = await createUser(email, sanitizedName.value, password, sanitizedPhone.value || undefined, userRole);
+    const user = await createUser(
+      normalizedEmail,
+      sanitizedName.value,
+      password,
+      sanitizedPhone.value || undefined,
+      userRole,
+    );
     if (!user) {
       return NextResponse.json({ success: false, error: 'A user with this email already exists' }, { status: 409 });
     }
