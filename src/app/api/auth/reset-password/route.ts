@@ -24,7 +24,7 @@ const resetConfirmSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // CSRF protection
-    if (!validateCsrfTokenEdge(request)) {
+    if (!(await validateCsrfTokenEdge(request))) {
       return csrfErrorResponse();
     }
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     // CSRF protection
-    if (!validateCsrfTokenEdge(request)) {
+    if (!(await validateCsrfTokenEdge(request))) {
       return csrfErrorResponse();
     }
 

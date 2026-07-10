@@ -26,7 +26,7 @@ vi.mock('@/lib/rate-limit', () => ({
 }));
 
 vi.mock('@/lib/csrf', () => ({
-  validateCsrfTokenEdge: () => true,
+  validateCsrfTokenEdge: () => Promise.resolve(true),
   csrfErrorResponse: () =>
     new Response(JSON.stringify({ success: false, error: 'CSRF validation failed' }), { status: 403 }),
 }));

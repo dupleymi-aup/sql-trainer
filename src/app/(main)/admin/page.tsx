@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
@@ -41,14 +41,17 @@ export default function AdminPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  const authorized = useMemo(() => {
-    if (status === 'loading') return false;
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    if (status === 'loading') return;
     const userRole = (session?.user as { role?: Role })?.role;
     if (userRole !== 'admin') {
       router.push('/app');
-      return false;
+      setAuthorized(false);
+    } else {
+      setAuthorized(true);
     }
-    return true;
   }, [session, status, router]);
 
   if (!authorized) return null;

@@ -19,7 +19,6 @@ const csrfProtectedApiPrefixes = [
   '/api/auth/reset-password',
   '/api/auth/verify-reset',
   '/api/push',
-  '/api/sql',
 ];
 
 function getSecurityHeaders(): Record<string, string> {
@@ -68,7 +67,7 @@ export default auth(async (request) => {
 
   // CSRF validation for state-changing API requests
   if (isCsrfProtectedRoute(pathname) && isCsrfProtectedMethod(request.method)) {
-    const isValid = validateCsrfTokenEdge(request);
+    const isValid = await validateCsrfTokenEdge(request);
     if (!isValid) {
       return NextResponse.json({ success: false, error: 'CSRF validation failed' }, { status: 403 });
     }
@@ -90,7 +89,7 @@ export default auth(async (request) => {
   // Generate CSRF token for authenticated requests only when missing
   // Use a flag to avoid regenerating on every request which breaks multi-tab usage
   if (session) {
-    const existingCsrfCookie = getCookieFromHeader(request, `${CSRF_COOKIE_NAME}-raw`);
+    const existingCsrfCookie = getCookieFromHeader(request, CSRF_COOKIE_NAME);
     if (!existingCsrfCookie) {
       try {
         const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();

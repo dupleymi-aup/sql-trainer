@@ -8,6 +8,7 @@ import {
   updateDeadline,
   deleteDeadline,
   buildReminderSchedule,
+  getDeadlineById,
 } from '@/lib/db-users';
 import { parseAndValidate } from '@/lib/validation';
 
@@ -93,6 +94,11 @@ export const PATCH = withTeacherAuth(async ({ session, request, params }) => {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
+  const deadline = getDeadlineById(deadlineId);
+  if (!deadline || deadline.group_id !== groupId) {
+    return NextResponse.json({ success: false, error: 'Deadline not found in this group' }, { status: 404 });
+  }
+
   const validation = await parseAndValidate(request, createDeadlineSchema.partial());
   if ('response' in validation) return validation.response;
 
@@ -129,6 +135,11 @@ export const DELETE = withTeacherAuth(async ({ session, request, params }) => {
   const group = getGroupById(groupId);
   if (!group || group.teacher_id !== session.user.id) {
     return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
+  }
+
+  const deadline = getDeadlineById(deadlineId);
+  if (!deadline || deadline.group_id !== groupId) {
+    return NextResponse.json({ success: false, error: 'Deadline not found in this group' }, { status: 404 });
   }
 
   deleteDeadline(deadlineId, session.user.id, session.user.id);

@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // CSRF protection — registration is a state-changing operation
-    if (!validateCsrfTokenEdge(request)) {
+    if (!(await validateCsrfTokenEdge(request))) {
       return csrfErrorResponse();
     }
 

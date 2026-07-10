@@ -43,42 +43,48 @@ describe('CSRF Utilities', () => {
   });
 
   describe('validateCsrfTokenEdge', () => {
-    it('should return false when no cookie present', () => {
+    it('should return false when no cookie present', async () => {
       const request = new Request('http://example.com', {
         method: 'POST',
         headers: { [CSRF_HEADER_NAME]: 'some-token' },
       });
-      expect(validateCsrfTokenEdge(request)).toBe(false);
+      expect(await validateCsrfTokenEdge(request)).toBe(false);
     });
 
-    it('should return false when no header present', () => {
+    it('should return false when no header present', async () => {
+      const { setCookieHeaders } = await generateCsrfTokenEdge();
+      const signedCookie = setCookieHeaders[0].split(';')[0].split('=').slice(1).join('=');
       const request = new Request('http://example.com', {
         method: 'POST',
-        headers: { cookie: `${CSRF_COOKIE_NAME}-raw=some-token` },
+        headers: { cookie: `${CSRF_COOKIE_NAME}=${signedCookie}` },
       });
-      expect(validateCsrfTokenEdge(request)).toBe(false);
+      expect(await validateCsrfTokenEdge(request)).toBe(false);
     });
 
-    it('should return false when tokens do not match', () => {
+    it('should return false when tokens do not match', async () => {
+      const { setCookieHeaders } = await generateCsrfTokenEdge();
+      const signedCookie = setCookieHeaders[0].split(';')[0].split('=').slice(1).join('=');
       const request = new Request('http://example.com', {
         method: 'POST',
         headers: {
-          cookie: `${CSRF_COOKIE_NAME}-raw=cookie-token`,
+          cookie: `${CSRF_COOKIE_NAME}=${signedCookie}`,
           [CSRF_HEADER_NAME]: 'header-token',
         },
       });
-      expect(validateCsrfTokenEdge(request)).toBe(false);
+      expect(await validateCsrfTokenEdge(request)).toBe(false);
     });
 
-    it('should return true when tokens match', () => {
+    it('should return true when tokens match', async () => {
+      const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();
+      const signedCookie = setCookieHeaders[0].split(';')[0].split('=').slice(1).join('=');
       const request = new Request('http://example.com', {
         method: 'POST',
         headers: {
-          cookie: `${CSRF_COOKIE_NAME}-raw=matching-token`,
-          [CSRF_HEADER_NAME]: 'matching-token',
+          cookie: `${CSRF_COOKIE_NAME}=${signedCookie}`,
+          [CSRF_HEADER_NAME]: rawToken,
         },
       });
-      expect(validateCsrfTokenEdge(request)).toBe(true);
+      expect(await validateCsrfTokenEdge(request)).toBe(true);
     });
   });
 
@@ -120,33 +126,34 @@ describe('CSRF Utilities', () => {
     it('should produce tokens that can be validated correctly', async () => {
       const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();
 
-      // Extract the raw cookie from set-cookie headers
-      const rawCookie = setCookieHeaders[1].split(';')[0];
+      // Extract the signed cookie from set-cookie headers
+      const signedCookie = setCookieHeaders[0].split(';')[0].split('=').slice(1).join('=');
 
       // Create a request with the cookie and header
       const request = new Request('http://example.com', {
         method: 'POST',
         headers: {
-          cookie: rawCookie,
+          cookie: `${CSRF_COOKIE_NAME}=${signedCookie}`,
           [CSRF_HEADER_NAME]: rawToken,
         },
       });
 
-      expect(validateCsrfTokenEdge(request)).toBe(true);
+      expect(await validateCsrfTokenEdge(request)).toBe(true);
     });
 
     it('should reject mismatched tokens', async () => {
-      const { rawToken } = await generateCsrfTokenEdge();
+      const { setCookieHeaders } = await generateCsrfTokenEdge();
+      const signedCookie = setCookieHeaders[0].split(';')[0].split('=').slice(1).join('=');
 
       const request = new Request('http://example.com', {
         method: 'POST',
         headers: {
-          cookie: `${CSRF_COOKIE_NAME}-raw=different-token`,
-          [CSRF_HEADER_NAME]: rawToken,
+          cookie: `${CSRF_COOKIE_NAME}=${signedCookie}`,
+          [CSRF_HEADER_NAME]: 'different-token',
         },
       });
 
-      expect(validateCsrfTokenEdge(request)).toBe(false);
+      expect(await validateCsrfTokenEdge(request)).toBe(false);
     });
   });
 

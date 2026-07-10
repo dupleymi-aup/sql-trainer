@@ -148,7 +148,7 @@ function withRoleAuth(
 
       const method = request.method.toUpperCase();
       if (method !== 'GET' && method !== 'HEAD') {
-        if (!validateCsrfTokenEdge(request)) {
+        if (!(await validateCsrfTokenEdge(request))) {
           return csrfErrorResponse();
         }
       }

@@ -172,17 +172,21 @@ export function getCookieFromHeader(request: Request, name: string): string | un
 
 /**
  * Validate CSRF token using only the request object (Edge runtime compatible).
- * Reads the raw cookie value from the Cookie header and compares with X-CSRF-Token header.
+ * Reads the signed cookie from the Cookie header, verifies its HMAC signature,
+ * and compares the embedded CSRF value with the X-CSRF-Token header.
  */
-export function validateCsrfTokenEdge(request: Request): boolean {
-  const rawCookieToken = getCookieFromHeader(request, `${CSRF_COOKIE_NAME}-raw`);
+export async function validateCsrfTokenEdge(request: Request): Promise<boolean> {
+  const signedCookieToken = getCookieFromHeader(request, CSRF_COOKIE_NAME);
   const headerToken = request.headers.get(CSRF_HEADER_NAME);
 
-  if (!rawCookieToken || !headerToken) {
+  if (!signedCookieToken || !headerToken) {
     return false;
   }
 
-  return rawCookieToken === headerToken;
+  const payload = await verifyToken(signedCookieToken);
+  if (!payload) return false;
+
+  return payload.csrf === headerToken;
 }
 
 /**
