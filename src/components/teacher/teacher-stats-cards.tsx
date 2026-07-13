@@ -25,7 +25,10 @@ export default function TeacherStatsCards() {
     const controller = new AbortController();
     controllerRef.current = controller;
     fetch('/api/teacher/stats', { signal: controller.signal })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to load');
+        return r.json();
+      })
       .then((data) => setStats(data.stats))
       .catch(() => setStats(null))
       .finally(() => setLoading(false));
