@@ -86,15 +86,3 @@ describe('Environment validation', () => {
     expect(result.errors).toHaveLength(0);
   });
 });
-
-describe('getRequiredEnv', () => {
-  const originalEnv = { ...process.env };
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = { ...originalEnv };
-  });
-});
