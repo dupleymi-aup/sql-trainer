@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/lib/theme-provider';
 
 /**
  * Dynamically updates the <meta name="theme-color"> tag

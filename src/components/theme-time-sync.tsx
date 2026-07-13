@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/lib/theme-provider';
 import { toast } from 'sonner';
 import { getLocale, tWithLocale } from '@/lib/i18n';
 
@@ -60,12 +60,15 @@ export function ThemeTimeSync() {
           clearTimeout(timeoutRef.current);
         }
         if (minutesToBoundary > 0) {
-          timeoutRef.current = setTimeout(() => {
-            if (themeValueRef.current !== 'system') {
-              setTheme('system');
-            }
-            timeoutRef.current = null;
-          }, minutesToBoundary * 60 * 1000);
+          timeoutRef.current = setTimeout(
+            () => {
+              if (themeValueRef.current !== 'system') {
+                setTheme('system');
+              }
+              timeoutRef.current = null;
+            },
+            minutesToBoundary * 60 * 1000,
+          );
         }
       }
     };

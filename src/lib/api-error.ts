@@ -23,20 +23,6 @@ function formatErrorMessage(context: string, error: unknown, isDev: boolean): st
   return `[${context}] ${message}`;
 }
 
-export function apiError(
-  message: string,
-  status: number,
-  correlationId?: string,
-  error?: unknown,
-): NextResponse<ApiErrorResponse> {
-  const id = correlationId || generateCorrelationId();
-  logger.error(`[${id}] ${message}`, error);
-  return NextResponse.json(
-    { success: false, error: message, correlationId: id, details: error instanceof Error ? error.message : undefined },
-    { status },
-  );
-}
-
 export function apiServerError(
   context: string,
   correlationId?: string,

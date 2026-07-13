@@ -42,11 +42,12 @@ export default function HintUsageAnalytics() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`/api/admin/analytics/hint-usage?${params}`)
+    fetch(`/api/admin/analytics/hint-usage?${params}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch hint usage analytics'))))
       .then((data) => {
         setTotalHints(data.total_hints_revealed || 0);
@@ -55,8 +56,11 @@ export default function HintUsageAnalytics() {
         setHintReliance(data.hint_reliance || []);
         setCorrelation(data.hint_completion_correlation);
       })
-      .catch(() => setError(t('analytics.error')))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError(t('analytics.error'));
+      })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;

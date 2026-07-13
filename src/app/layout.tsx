@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/lib/theme-provider';
 import ServiceWorkerRegister from '@/components/service-worker-register';
 import PwaInstallPrompt from '@/components/pwa-install-prompt';
 import WebVitals from '@/components/web-vitals';
@@ -68,7 +68,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <CsrfTokenMeta />
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider defaultTheme="system">
           {children}
           <Toaster />
           <ThemeTimeSync />

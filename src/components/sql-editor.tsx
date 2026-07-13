@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/lib/theme-provider';
 import {
   EditorView,
   keymap,

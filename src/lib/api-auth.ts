@@ -209,10 +209,9 @@ export const withUserAuth = withRoleAuth(requireUser, 'user', { max: 60, windowM
 
 /**
  * Strict variant of withUserAuth for sensitive operations (password change, account deletion, etc).
- * Pass as first argument to override the default rate limit:
- *   export const POST = withUserAuthStrict(handler, { max: 5, windowMs: 15 * 60 * 1000 });
+ * Default: 5 requests per 15 minutes. Callers can override via withUserAuthStrict(handler, { max, windowMs }).
  */
-export const withUserAuthStrict = withRoleAuth(requireUser, 'user', { max: 60, windowMs: 60_000 }, 'User');
+export const withUserAuthStrict = withRoleAuth(requireUser, 'user', { max: 5, windowMs: 15 * 60_000 }, 'User');
 
 /**
  * Higher-order wrapper for analytics GET routes.

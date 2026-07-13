@@ -35,18 +35,22 @@ export default function CompletionFunnelChart({ apiEndpoint }: CompletionFunnelC
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`${apiEndpoint || '/api/admin/analytics/funnel'}?${params}`)
+    fetch(`${apiEndpoint || '/api/admin/analytics/funnel'}?${params}`, { signal: controller.signal })
       .then((r) => {
         if (!r.ok) throw new Error();
         return r.json();
       })
       .then((d) => setFunnel(d.funnel))
-      .catch(() => setError(t('analytics.error')))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError(t('analytics.error'));
+      })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [apiEndpoint, startDate, endDate]);
 
   if (loading) return <p className="text-center py-4 text-muted-foreground">{t('analytics.loading')}</p>;

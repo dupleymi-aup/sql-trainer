@@ -1,7 +1,7 @@
 'use client';
 
 import type * as React from 'react';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/lib/theme-provider';
 import { Toaster as Sonner, ToasterProps } from 'sonner';
 
 const Toaster = ({ ...props }: ToasterProps) => {

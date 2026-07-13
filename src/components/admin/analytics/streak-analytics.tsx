@@ -31,11 +31,12 @@ export default function StreakAnalytics() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`/api/admin/analytics/streaks?${params}`)
+    fetch(`/api/admin/analytics/streaks?${params}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch streak analytics'))))
       .then((data) => {
         setDistribution(data.distribution || []);
@@ -43,8 +44,11 @@ export default function StreakAnalytics() {
         setCorrelation(data.streak_completion_correlation || []);
         setSummary(data.summary);
       })
-      .catch(() => setError(t('analytics.error')))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError(t('analytics.error'));
+      })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;

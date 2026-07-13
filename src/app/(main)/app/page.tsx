@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useTheme } from 'next-themes';
+import { useTheme } from '@/lib/theme-provider';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { useSQLTrainerStore } from '@/lib/store';

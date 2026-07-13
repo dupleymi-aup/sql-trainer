@@ -25,20 +25,24 @@ export default function LearningPathTimeline({ userId }: LearningPathTimelinePro
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     const loadData = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/admin/analytics/student/${userId}/timeline`);
+        const res = await fetch(`/api/admin/analytics/student/${userId}/timeline`, { signal: controller.signal });
         const json = await res.json();
         setTimeline(json.timeline || []);
-      } catch (err) {
-        logger.error('Learning path timeline fetch failed', err);
-        setError(t('analytics.error'));
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          logger.error('Learning path timeline fetch failed', err);
+          setError(t('analytics.error'));
+        }
       } finally {
         setLoading(false);
       }
     };
     loadData();
+    return () => controller.abort();
   }, [userId]);
 
   if (loading) return <div className="flex justify-center py-4">{t('analytics.loading')}</div>;

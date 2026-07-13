@@ -33,21 +33,25 @@ export default function TimeToCompleteChart() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`/api/admin/analytics/time-estimates?${params}`)
+    fetch(`/api/admin/analytics/time-estimates?${params}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
         setData(data.estimates || []);
         setLoading(false);
       })
       .catch((err) => {
-        logger.error('Time to complete fetch failed', err);
-        setError(t('analytics.error'));
-        setLoading(false);
+        if (err.name !== 'AbortError') {
+          logger.error('Time to complete fetch failed', err);
+          setError(t('analytics.error'));
+          setLoading(false);
+        }
       });
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) {

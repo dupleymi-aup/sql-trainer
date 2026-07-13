@@ -39,21 +39,25 @@ export default function WeekOverWeekComparison() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`/api/admin/analytics/week-comparison?${params}`)
+    fetch(`/api/admin/analytics/week-comparison?${params}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((res) => {
         setData(res.data || []);
         setLoading(false);
       })
       .catch((err) => {
-        logger.error('Week comparison fetch failed', err);
-        setError(t('analytics.error'));
-        setLoading(false);
+        if (err.name !== 'AbortError') {
+          logger.error('Week comparison fetch failed', err);
+          setError(t('analytics.error'));
+          setLoading(false);
+        }
       });
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) {

@@ -33,11 +33,12 @@ export default function ReEngagement() {
   const { startDate, endDate } = useDateRange();
 
   useEffect(() => {
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (startDate) params.set('startDate', String(startDate));
     if (endDate) params.set('endDate', String(endDate));
 
-    fetch(`/api/admin/analytics/re-engagement?${params}`)
+    fetch(`/api/admin/analytics/re-engagement?${params}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch re-engagement data'))))
       .then((data) => {
         setReEngagedStudents(data.re_engaged_students || []);
@@ -46,8 +47,11 @@ export default function ReEngagement() {
         setAvgGap(data.avg_gap_days || 0);
         setTotalReEngaged(data.total_re_engaged || 0);
       })
-      .catch(() => setError(t('analytics.error')))
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError(t('analytics.error'));
+      })
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [startDate, endDate]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;

@@ -39,6 +39,7 @@ function getSecurityHeaders(): Record<string, string> {
       ? "default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; style-src * 'unsafe-inline'; img-src * data: blob:; font-src * data:; connect-src *; media-src *; object-src *; frame-src *; base-uri *; form-action *; frame-ancestors *"
       : [
           "default-src 'self'",
+          // unsafe-inline required for Next.js hydration scripts; migrate to nonces when supported
           "script-src 'self' 'unsafe-inline'",
           "style-src 'self' 'unsafe-inline'",
           "img-src 'self' data: blob:",

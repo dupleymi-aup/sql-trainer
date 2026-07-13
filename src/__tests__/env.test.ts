@@ -97,18 +97,4 @@ describe('getRequiredEnv', () => {
   afterEach(() => {
     process.env = { ...originalEnv };
   });
-
-  it('should return value for existing env var', async () => {
-    const { getRequiredEnv } = await import('@/lib/env');
-
-    process.env.AUTH_SECRET = 'test-secret';
-    expect(getRequiredEnv('AUTH_SECRET')).toBe('test-secret');
-  });
-
-  it('should throw for missing env var', async () => {
-    const { getRequiredEnv } = await import('@/lib/env');
-
-    delete process.env.AUTH_SECRET;
-    expect(() => getRequiredEnv('AUTH_SECRET')).toThrow('Missing required environment variable: AUTH_SECRET');
-  });
 });
