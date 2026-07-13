@@ -36,7 +36,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 3,
 };
 
-const minLogLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || (isDev ? 'debug' : 'info');
+const minLogLevel: LogLevel = (process.env.LOG_LEVEL as LogLevel) || (isDev ? 'info' : 'info');
 
 function serializeError(error: unknown): LogEntry['error'] {
   if (error instanceof Error) {

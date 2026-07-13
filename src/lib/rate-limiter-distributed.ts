@@ -199,6 +199,41 @@ function startCleanupInterval(): void {
 
 startCleanupInterval();
 
+/**
+ * In-memory rate limiter — used as fallback when Redis is not configured.
+ */
+export class InMemoryRateLimiter implements RateLimiter {
+  async check(key: string, options: RateLimitOptions): Promise<RateLimitResult> {
+    return checkInMemory(key, options);
+  }
+
+  async reset(key: string): Promise<void> {
+    clearInMemoryKey(key);
+  }
+
+  async getStatus(key: string, options?: RateLimitOptions): Promise<RateLimitResult | null> {
+    const max = options?.max ?? 100;
+    const windowMs = options?.windowMs ?? 60_000;
+    const now = Date.now();
+    const entry = memoryStore.get(key);
+
+    if (!entry || now > entry.resetAt) {
+      return { success: true, remaining: max, resetAt: now + windowMs, limit: max };
+    }
+
+    return {
+      success: entry.count < max,
+      remaining: Math.max(0, max - entry.count),
+      resetAt: entry.resetAt,
+      limit: max,
+    };
+  }
+
+  isHealthy(): boolean {
+    return true;
+  }
+}
+
 function checkInMemory(key: string, { max, windowMs = 60_000 }: RateLimitOptions): RateLimitResult {
   const now = Date.now();
   const entry = memoryStore.get(key);
@@ -247,12 +282,19 @@ export function clearInMemoryStore(): void {
   memoryStore.clear();
 }
 
-// Singleton instance
-let globalRateLimiter: RedisRateLimiter | null = null;
+// Singleton instance — use InMemoryRateLimiter by default, switch to Redis only if REDIS_URL is set
+let globalRateLimiter: RateLimiter | null = null;
 
 export function getRateLimiter(): RateLimiter {
   if (!globalRateLimiter) {
-    globalRateLimiter = new RedisRateLimiter(process.env.REDIS_URL);
+    const redisUrl = process.env.REDIS_URL;
+    if (redisUrl) {
+      logger.info('Initializing Redis rate limiter');
+      globalRateLimiter = new RedisRateLimiter(redisUrl);
+    } else {
+      logger.info('REDIS_URL not set, using in-memory rate limiter');
+      globalRateLimiter = new InMemoryRateLimiter();
+    }
   }
   return globalRateLimiter;
 }
@@ -265,11 +307,16 @@ export function resetGlobalRateLimiter(): void {
 // Helper function to create Redis client (lazy-loaded, optional dependency)
 // The module name is constructed dynamically to prevent bundlers from
 // trying to resolve it at build time when ioredis is not installed.
+// Returns null if no redisUrl is provided — prevents accidental connections.
 function createRedisClient(redisUrl?: string): Redis | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const Redis = require(/* turbopackIgnore: true */ 'io' + 'redis');
-    const client = new Redis(redisUrl || process.env.REDIS_URL || 'redis://localhost:6379');
+    // Only create client if explicit URL is provided (no fallback to localhost)
+    if (!redisUrl) {
+      return null;
+    }
+    const client = new Redis(redisUrl);
     // Log Redis errors at debug level (connection failures are handled by initRedis)
     client.on('error', (err: Error) => logger.debug('Redis error event', { message: err.message }));
     return client;

@@ -392,8 +392,8 @@ export default function LandingPage({ locale }: { locale?: Locale }) {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-blue-500/[0.02] blur-3xl" />
       </div>
 
-      {/* Main content wrapper with sidebar offset */}
-      <div className="flex flex-col md:pr-72">
+      {/* Main content wrapper */}
+      <div className="flex flex-col">
         {/* Header */}
         <header className="sticky top-0 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-12">
@@ -841,7 +841,7 @@ export default function LandingPage({ locale }: { locale?: Locale }) {
 
         {/* Footer */}
       </div>
-      <footer className="relative z-10 border-t border-border/50 bg-card md:pr-72">
+      <footer className="relative z-10 border-t border-border/50 bg-card">
         <div className="max-w-6xl mx-auto px-6 sm:px-8 lg:px-12 py-12">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
