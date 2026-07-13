@@ -6,7 +6,7 @@ import { performance } from 'perf_hooks';
 import { createHash } from 'crypto';
 import Database from 'better-sqlite3';
 import { adaptPostgreSQLToSQLite, adaptWithWarnings } from './postgresql-adapter';
-import { adaptClickHouseToSQLite } from './clickhouse-adapter';
+import { adaptClickHouseToSQLite, adaptClickHouseWithWarnings } from './clickhouse-adapter';
 import { adaptMySQLWithWarnings, adaptMySQLToSQLite } from './mysql-adapter';
 import { t } from './i18n';
 
@@ -197,7 +197,8 @@ function adaptSqlForExecution(
     return { processedSql: result.sql, warnings: result.warnings };
   }
   if (dbType === 'clickhouse') {
-    return { processedSql: adaptClickHouseToSQLite(sql), warnings: [] };
+    const result = adaptClickHouseWithWarnings(sql);
+    return { processedSql: result.sql, warnings: result.warnings };
   }
   if (dbType === 'mysql') {
     const result = adaptMySQLWithWarnings(sql);

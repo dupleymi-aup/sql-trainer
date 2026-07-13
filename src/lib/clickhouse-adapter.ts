@@ -88,6 +88,13 @@ export function adaptClickHouseToSQLite(sql: string): string {
   return result;
 }
 
+/**
+ * Adapt ClickHouse SQL to SQLite and return any warnings.
+ */
+export function adaptClickHouseWithWarnings(sql: string): { sql: string; warnings: string[] } {
+  return { sql: adaptClickHouseToSQLite(sql), warnings: [] };
+}
+
 function replaceClickHouseTypes(sql: string): string {
   let result = sql;
 
