@@ -19,6 +19,7 @@ const csrfProtectedApiPrefixes = [
   '/api/auth/reset-password',
   '/api/auth/verify-reset',
   '/api/push',
+  '/api/sql',
 ];
 
 function getSecurityHeaders(): Record<string, string> {

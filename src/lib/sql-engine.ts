@@ -5,9 +5,9 @@
 import { performance } from 'perf_hooks';
 import { createHash } from 'crypto';
 import Database from 'better-sqlite3';
-import { adaptPostgreSQLToSQLite, detectDroppedFunctions as detectPgDroppedFunctions } from './postgresql-adapter';
+import { adaptPostgreSQLToSQLite, adaptWithWarnings } from './postgresql-adapter';
 import { adaptClickHouseToSQLite } from './clickhouse-adapter';
-import { adaptMySQLToSQLite, detectDroppedFunctions as detectMysqlDroppedFunctions } from './mysql-adapter';
+import { adaptMySQLWithWarnings, adaptMySQLToSQLite } from './mysql-adapter';
 import { t } from './i18n';
 
 export interface QueryResult {
@@ -181,9 +181,6 @@ function isEmptyOrComment(sql: string): boolean {
   return !stripLeadingComments(sql);
 }
 
-const UNSUPPORTED_FUNC_WARNING = (func: string) =>
-  `Function "${func}" is not supported in SQLite mode and will be skipped. Results may vary.`;
-
 /**
  * Adapt SQL from PostgreSQL/ClickHouse/MySQL to SQLite.
  * Returns the adapted SQL and any warnings about unsupported functions.
@@ -196,17 +193,15 @@ function adaptSqlForExecution(
     return { processedSql: sql, warnings: [t('sql.warning.mongodbNotSupported')] };
   }
   if (dbType === 'postgresql') {
-    const dropped = detectPgDroppedFunctions(sql);
-    const result = adaptPostgreSQLToSQLite(sql);
-    return { processedSql: result, warnings: dropped.map(UNSUPPORTED_FUNC_WARNING) };
+    const result = adaptWithWarnings(sql);
+    return { processedSql: result.sql, warnings: result.warnings };
   }
   if (dbType === 'clickhouse') {
     return { processedSql: adaptClickHouseToSQLite(sql), warnings: [] };
   }
   if (dbType === 'mysql') {
-    const adapted = adaptMySQLToSQLite(sql);
-    const dropped = detectMysqlDroppedFunctions(sql);
-    return { processedSql: adapted, warnings: dropped.map(UNSUPPORTED_FUNC_WARNING) };
+    const result = adaptMySQLWithWarnings(sql);
+    return { processedSql: result.sql, warnings: result.warnings };
   }
   return { processedSql: sql, warnings: [] };
 }

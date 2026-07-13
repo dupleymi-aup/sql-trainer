@@ -181,37 +181,29 @@ export interface AdaptResult {
 
 /**
  * Adapt PostgreSQL SQL to SQLite and return any warnings about dropped functions.
- * Uses AST-based transformation with regex fallback.
+ * Uses regex-based transformation (proven reliable for PG-specific constructs),
+ * with AST-based validation from node-sql-parser for additional warnings.
  */
 export function adaptWithWarnings(sql: string): AdaptResult {
-  // Try AST-based transformation first
-  const astResult = transformSQL(sql, 'postgresql', 'sqlite');
+  // Always use the regex adapter for the actual transformation — it handles
+  // PG-specific constructs (::casts, ILIKE, DISTINCT ON, LIMIT ALL, etc.)
+  // that node-sql-parser may not cover in dialect conversion.
+  const result = adaptPostgreSQLToSQLite(sql);
 
-  // Also detect dropped functions with regex (for better warnings)
+  // Use AST path for additional validation/warnings
+  const astResult = transformSQL(sql, 'postgresql', 'sqlite');
   const dropped = detectDroppedFunctions(sql);
   const droppedWarnings = dropped.map(
     (func) => `Function "${func}" is not supported in SQLite mode and will be skipped. Results may differ.`,
   );
 
-  // Combine warnings
   const allWarnings = [
     ...astResult.warnings,
     ...droppedWarnings,
     ...astResult.errors.map((e) => `Transform error: ${e}`),
   ];
 
-  // If AST transformation failed, fall back to regex-based approach
-  if (astResult.errors.length > 0 || !astResult.sql) {
-    return {
-      sql: adaptPostgreSQLToSQLite(sql),
-      warnings: allWarnings,
-    };
-  }
-
-  return {
-    sql: astResult.sql,
-    warnings: allWarnings,
-  };
+  return { sql: result, warnings: allWarnings };
 }
 
 /**

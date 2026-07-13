@@ -55,14 +55,14 @@ describe('Role-based registration', () => {
   });
 
   it('registers as student by default', async () => {
-    const response = await register('John', 'john@example.com', 'password123');
+    const response = await register('John', 'john@example.com', 'Password123!');
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(data.user.role).toBe('student');
   });
 
   it('registers as student when explicitly requested', async () => {
-    const response = await register('Jane', 'jane@example.com', 'password123', 'student');
+    const response = await register('Jane', 'jane@example.com', 'Password123!', 'student');
     const data = await response.json();
     expect(data.success).toBe(true);
     expect(data.user.role).toBe('student');
@@ -74,8 +74,8 @@ describe('Role-based registration', () => {
   });
 
   it('rejects duplicate email', async () => {
-    await register('First', 'dup@example.com', 'password123');
-    const response = await register('Second', 'dup@example.com', 'password456');
+    await register('First', 'dup@example.com', 'Password123!');
+    const response = await register('Second', 'dup@example.com', 'Password456!');
     expect(response.status).toBe(409);
     const data = await response.json();
     expect(data.success).toBe(false);

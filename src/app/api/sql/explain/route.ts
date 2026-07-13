@@ -6,6 +6,7 @@ import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-l
 import { sqlExplainSchema, VALID_DB_TYPES } from '@/lib/sql-schema';
 import { validateTrainingSql } from '@/lib/sql-safety';
 import { apiServerError } from '@/lib/api-error';
+import { auth } from '@/lib/auth-internal';
 
 /**
  * Analyze EXPLAIN plan and return performance suggestions.
@@ -52,6 +53,11 @@ function analyzePlan(plan: string, sql: string): string[] {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = (await auth()) as { user?: { id?: string } } | null;
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Rate limit: 15 explain requests per minute per client
     const clientId = getClientIdentifier(request);
     const limitResult = await rateLimit(`explain:${clientId}`, { max: 15, windowMs: RATE_LIMIT_WINDOWS.oneMinute });

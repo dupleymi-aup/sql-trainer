@@ -11,6 +11,7 @@ import { Award, Clock, Mail, Target, RotateCcw, TrendingUp, AlertCircle, Downloa
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { t, getLocale } from '@/lib/i18n';
 import { generateStudentReportPDF } from '@/lib/pdf-report';
+import { getTasksByDifficulty } from '@/lib/training-tasks';
 
 interface StudentDetail {
   user_id: string;
@@ -58,6 +59,10 @@ export default function TeacherStudentDialog({ studentId, open, onOpenChange }: 
   const [data, setData] = useState<StudentDetailData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const totalBeginner = getTasksByDifficulty('beginner').length || 1;
+  const totalIntermediate = getTasksByDifficulty('intermediate').length || 1;
+  const totalAdvanced = getTasksByDifficulty('advanced').length || 1;
 
   useEffect(() => {
     if (!open || !studentId) return;
@@ -240,7 +245,7 @@ export default function TeacherStudentDialog({ studentId, open, onOpenChange }: 
                       </Badge>
                       <span className="text-lg font-bold">{data.student.beginner_completed}</span>
                     </div>
-                    <Progress value={(data.student.beginner_completed / 8) * 100} className="h-2" />
+                    <Progress value={(data.student.beginner_completed / totalBeginner) * 100} className="h-2" />
                   </CardContent>
                 </Card>
                 <Card>
@@ -251,7 +256,7 @@ export default function TeacherStudentDialog({ studentId, open, onOpenChange }: 
                       </Badge>
                       <span className="text-lg font-bold">{data.student.intermediate_completed}</span>
                     </div>
-                    <Progress value={(data.student.intermediate_completed / 23) * 100} className="h-2" />
+                    <Progress value={(data.student.intermediate_completed / totalIntermediate) * 100} className="h-2" />
                   </CardContent>
                 </Card>
                 <Card>
@@ -262,7 +267,7 @@ export default function TeacherStudentDialog({ studentId, open, onOpenChange }: 
                       </Badge>
                       <span className="text-lg font-bold">{data.student.advanced_completed}</span>
                     </div>
-                    <Progress value={(data.student.advanced_completed / 25) * 100} className="h-2" />
+                    <Progress value={(data.student.advanced_completed / totalAdvanced) * 100} className="h-2" />
                   </CardContent>
                 </Card>
               </div>

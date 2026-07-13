@@ -715,9 +715,9 @@ export function getStudentPerformanceCards(limit = 20, filters?: TimeRangeFilter
     else if (recentCount < previousCount * 0.8) performance_trend = 'declining';
 
     // Determine weakest difficulty
-    const totalBeginner = TRAINING_TASKS.filter((t) => t.difficulty === 'beginner').length || 8;
-    const totalIntermediate = TRAINING_TASKS.filter((t) => t.difficulty === 'intermediate').length || 15;
-    const totalAdvanced = TRAINING_TASKS.filter((t) => t.difficulty === 'advanced').length || 25;
+    const totalBeginner = TRAINING_TASKS.filter((t) => t.difficulty === 'beginner').length || 1;
+    const totalIntermediate = TRAINING_TASKS.filter((t) => t.difficulty === 'intermediate').length || 1;
+    const totalAdvanced = TRAINING_TASKS.filter((t) => t.difficulty === 'advanced').length || 1;
     let weakest_difficulty = 'beginner';
     const rates = [
       student.beginner_completed / totalBeginner,
@@ -4237,11 +4237,12 @@ export function getPredictiveGrades(filters?: TimeRangeFilters): PredictiveGrade
   }[];
 
   const totalTasks = TRAINING_TASKS.length;
+  const totalAdvanced = TRAINING_TASKS.filter((t) => t.difficulty === 'advanced').length || 1;
 
   return students.map((student) => {
     const completionRate = (student.tasks_completed / totalTasks) * 100;
     const attemptEfficiency = Math.max(0, 1 - student.avg_attempts / 6) * 100;
-    const difficultyBonus = Math.min((student.advanced_completed / 25) * 100, 100);
+    const difficultyBonus = Math.min((student.advanced_completed / totalAdvanced) * 100, 100);
 
     const currentScore = Math.round(completionRate * 0.6 + attemptEfficiency * 0.25 + difficultyBonus * 0.15);
 
