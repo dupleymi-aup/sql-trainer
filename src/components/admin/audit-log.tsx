@@ -49,6 +49,7 @@ export default function AuditLog() {
 
   useEffect(() => {
     fetchLogs();
+    return () => controllerRef.current?.abort();
   }, [fetchLogs]);
 
   const getActionLabel = (action: string) => {

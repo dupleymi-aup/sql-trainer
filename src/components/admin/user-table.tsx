@@ -134,6 +134,7 @@ export default function UserTable() {
 
   useEffect(() => {
     fetchUsers();
+    return () => controllerRef.current?.abort();
   }, [fetchUsers]);
 
   const handleSort = useCallback(
