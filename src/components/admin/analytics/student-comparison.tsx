@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import {
   RadarChart,
   PolarGrid,
@@ -37,30 +38,12 @@ interface StudentData {
 }
 
 export default function StudentComparison() {
-  const [data, setData] = useState<StudentData[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error } = useAnalyticsQuery<StudentData[]>({
+    endpoint: '/api/admin/analytics/skills',
+    dataKey: 'breakdown',
+  });
   const [studentA, setStudentA] = useState<string | null>(null);
   const [studentB, setStudentB] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch('/api/admin/analytics/skills')
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => {
-        setData(d.breakdown);
-        if (d.breakdown.length >= 2) {
-          setStudentA(d.breakdown[0].user_id);
-          setStudentB(d.breakdown[1].user_id);
-        } else if (d.breakdown.length === 1) {
-          setStudentA(d.breakdown[0].user_id);
-        }
-      })
-      .catch(() => setError(t('analytics.error')))
-      .finally(() => setLoading(false));
-  }, []);
 
   if (loading) return <p className="text-center py-4 text-muted-foreground">{t('analytics.loading')}</p>;
   if (error)

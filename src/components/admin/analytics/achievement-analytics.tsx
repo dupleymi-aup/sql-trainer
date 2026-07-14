@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Award, Clock } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface AchievementStatsEntry {
   id: string;
@@ -22,33 +21,10 @@ interface AchievementStatsEntry {
 }
 
 export default function AchievementAnalytics() {
-  const [data, setData] = useState<AchievementStatsEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/achievements?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) setData(data.achievements);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<AchievementStatsEntry[]>({
+    endpoint: '/api/admin/analytics/achievements',
+    dataKey: 'achievements',
+  });
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error) {
@@ -59,7 +35,7 @@ export default function AchievementAnalytics() {
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   return (
     <Card>
@@ -68,7 +44,7 @@ export default function AchievementAnalytics() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {data.map((achievement) => (
+          {data?.map((achievement) => (
             <div key={achievement.id} className="p-4 rounded-lg border space-y-3">
               <div className="flex items-start gap-3">
                 <Award className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />

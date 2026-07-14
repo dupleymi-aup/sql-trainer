@@ -1,48 +1,34 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, UserPlus, TrendingUp, Users } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 export default function RegistrationTrends() {
-  const [daily, setDaily] = useState<Array<{ date: string; count: number; cumulative: number }>>([]);
-  const [summary, setSummary] = useState<{
-    new_this_week: number;
-    new_this_month: number;
-    total: number;
-    weekly_growth_rate: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  interface RegistrationResponse {
+    daily: Array<{ date: string; count: number; cumulative: number }>;
+    summary: {
+      new_this_week: number;
+      new_this_month: number;
+      total: number;
+      weekly_growth_rate: number;
+    } | null;
+  }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
+  const { data, loading, error } = useAnalyticsQuery<RegistrationResponse>({
+    endpoint: '/api/admin/analytics/registrations',
+    transform: (json) => ({
+      daily: (json.daily as RegistrationResponse['daily']) || [],
+      summary: json.summary as RegistrationResponse['summary'],
+    }),
+  });
 
-    fetch(`/api/admin/analytics/registrations?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch registration trends'))))
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setDaily(data.daily || []);
-          setSummary(data.summary);
-        }
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const daily = data?.daily ?? [];
+  const summary = data?.summary ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

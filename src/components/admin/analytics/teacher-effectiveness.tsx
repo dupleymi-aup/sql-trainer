@@ -1,46 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Users, TrendingUp, Award } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EmptyState from './empty-state';
 
 export default function TeacherEffectiveness() {
-  const [teachers, setTeachers] = useState<
-    Array<{
+  const { data, loading, error } = useAnalyticsQuery<{
+    teachers: Array<{
       id: string;
       name: string;
       student_count: number;
       avg_completion_rate: number;
       avg_attempts: number;
       avg_growth_rate: number;
-    }>
-  >([]);
-  const [summary, setSummary] = useState<{
-    total_teachers: number;
-    avg_student_per_teacher: number;
-    top_teacher: string;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    fetch('/api/admin/analytics/teacher-effectiveness')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch teacher effectiveness'))))
-      .then((data) => {
-        setTeachers(data.teachers || []);
-        setSummary(data.summary);
-      })
-      .catch(() => setError(t('analytics.error')))
-      .finally(() => setLoading(false));
-  }, [startDate, endDate]);
+    }>;
+    summary: {
+      total_teachers: number;
+      avg_student_per_teacher: number;
+      top_teacher: string;
+    };
+  }>({
+    endpoint: '/api/admin/analytics/teacher-effectiveness',
+    transform: (json) => ({
+      teachers: (json.teachers as []) || [],
+      summary: json.summary as { total_teachers: number; avg_student_per_teacher: number; top_teacher: string },
+    }),
+  });
+  const teachers = data?.teachers ?? [];
+  const summary = data?.summary ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

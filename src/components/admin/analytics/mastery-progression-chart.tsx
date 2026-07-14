@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { t, getLocale } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface MasteryProgressionChartProps {
   apiEndpoint?: string;
@@ -39,38 +39,11 @@ const SKILL_COLORS: Record<string, string> = {
 };
 
 export default function MasteryProgressionChart({ apiEndpoint }: MasteryProgressionChartProps) {
-  const [data, setData] = useState<MasteryWeek[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error } = useAnalyticsQuery<MasteryWeek[]>({
+    endpoint: apiEndpoint || '/api/admin/analytics/mastery',
+    dataKey: 'progression',
+  });
   const [selectedSkills, setSelectedSkills] = useState<string[]>(['overall', 'select', 'joins', 'aggregation']);
-  const { startDate, endDate } = useDateRange();
-  const controllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`${apiEndpoint || '/api/admin/analytics/mastery'}?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => {
-        if (!controller.signal.aborted) setData(d.progression);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [apiEndpoint, startDate, endDate]);
 
   const toggleSkill = (skill: string) => {
     setSelectedSkills((prev) => (prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertCircle, Users, TrendingUp, Activity } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface EngagementMetric {
   user_id: string;
@@ -23,42 +23,15 @@ interface EngagementMetric {
 }
 
 export default function EngagementMetrics() {
-  const [data, setData] = useState<EngagementMetric[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-  const controllerRef = useRef<AbortController | null>(null);
+  const { data, loading, error } = useAnalyticsQuery<EngagementMetric[]>({
+    endpoint: '/api/admin/analytics/engagement',
+    dataKey: 'metrics',
+  });
 
-  useEffect(() => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/engagement?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) setData(data.metrics);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
-
-  const highEngagement = useMemo(() => data.filter((d) => d.engagement_level === 'high').length, [data]);
-  const atRisk = useMemo(() => data.filter((d) => d.engagement_level === 'at_risk').length, [data]);
+  const highEngagement = useMemo(() => (data ?? []).filter((d) => d.engagement_level === 'high').length, [data]);
+  const atRisk = useMemo(() => (data ?? []).filter((d) => d.engagement_level === 'at_risk').length, [data]);
   const avgEngagement = useMemo(
-    () => (data.length > 0 ? Math.round(data.reduce((s, d) => s + d.engagement_score, 0) / data.length) : 0),
+    () => (data && data.length > 0 ? Math.round(data.reduce((s, d) => s + d.engagement_score, 0) / data.length) : 0),
     [data],
   );
 
@@ -72,7 +45,7 @@ export default function EngagementMetrics() {
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const levelLabels: Record<string, string> = {
     high: t('teacher.engagement.high'),
@@ -142,7 +115,7 @@ export default function EngagementMetrics() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((metric) => (
+                {data?.map((metric) => (
                   <TableRow key={metric.user_id}>
                     <TableCell>
                       <div>

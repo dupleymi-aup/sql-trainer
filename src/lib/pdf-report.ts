@@ -5,6 +5,7 @@
 import { escapeHtml } from './html-utils';
 import { toast } from 'sonner';
 import type { Locale } from '@/lib/i18n';
+import { getTasksByDifficulty } from '@/lib/training-tasks';
 
 export interface PDFReportOptions {
   title: string;
@@ -141,9 +142,9 @@ export function generateStudentReportPDF(
 
       <h2>${tr.levelProgress}</h2>
       <div>
-        <div class="info-row"><span class="label">${tr.beginner}:</span><span class="value">${student.beginner_completed}/8</span></div>
-        <div class="info-row"><span class="label">${tr.intermediate}:</span><span class="value">${student.intermediate_completed}/23</span></div>
-        <div class="info-row"><span class="label">${tr.advanced}:</span><span class="value">${student.advanced_completed}/25</span></div>
+        <div class="info-row"><span class="label">${tr.beginner}:</span><span class="value">${student.beginner_completed}/${getTasksByDifficulty('beginner').length}</span></div>
+        <div class="info-row"><span class="label">${tr.intermediate}:</span><span class="value">${student.intermediate_completed}/${getTasksByDifficulty('intermediate').length}</span></div>
+        <div class="info-row"><span class="label">${tr.advanced}:</span><span class="value">${student.advanced_completed}/${getTasksByDifficulty('advanced').length}</span></div>
       </div>
 
       <div class="footer">

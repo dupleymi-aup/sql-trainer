@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
 import EmptyState from './empty-state';
 
 interface CohortComparisonEntry {
@@ -17,30 +16,14 @@ interface CohortComparisonEntry {
 }
 
 export default function CohortComparisonChart() {
-  const [data, setData] = useState<CohortComparisonEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/admin/analytics/cohort-comparison');
-        const json = await res.json();
-        setData(json.cohorts || []);
-      } catch (err) {
-        logger.error('Cohort comparison fetch failed', err);
-        setError(t('analytics.error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-  }, []);
+  const { data, loading, error } = useAnalyticsQuery<CohortComparisonEntry[]>({
+    endpoint: '/api/admin/analytics/cohort-comparison',
+    dataKey: 'cohorts',
+  });
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-8">{error}</div>;
-  if (data.length === 0) return <EmptyState icon="chart" />;
+  if (!data || data.length === 0) return <EmptyState icon="chart" />;
 
   return (
     <Card>

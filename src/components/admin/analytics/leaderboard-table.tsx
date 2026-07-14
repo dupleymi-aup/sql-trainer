@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StudentDetailDialog from './student-detail-dialog';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import EmptyState from './empty-state';
 import { TRAINING_TASKS } from '@/lib/training-tasks';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface LeaderboardEntry {
   rank: number;
@@ -38,9 +38,10 @@ function RankIcon({ rank }: { rank: number }) {
 }
 
 export default function LeaderboardTable() {
-  const [data, setData] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error } = useAnalyticsQuery<LeaderboardEntry[]>({
+    endpoint: '/api/admin/analytics/leaderboard',
+    dataKey: 'leaderboard',
+  });
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -48,30 +49,6 @@ export default function LeaderboardTable() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/leaderboard?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) setData(data.leaderboard);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -84,7 +61,7 @@ export default function LeaderboardTable() {
   };
 
   const filteredAndSorted = useMemo(() => {
-    let result = [...data];
+    let result = [...(data ?? [])];
     if (search) {
       const s = search.toLowerCase();
       result = result.filter((e) => e.name.toLowerCase().includes(s) || e.email.toLowerCase().includes(s));
@@ -118,7 +95,7 @@ export default function LeaderboardTable() {
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const sortCols: { key: SortKey; label: string; className?: string }[] = [
     { key: 'rank', label: t('analytics.leaderboard.rank'), className: 'w-16' },

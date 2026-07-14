@@ -1,53 +1,36 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Users, Clock, TrendingUp } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 export default function OnboardingFunnel() {
-  const [funnel, setFunnel] = useState<
-    Array<{ stage: string; count: number; percentage: number; drop_off_rate: number }>
-  >([]);
-  const [weeklyTrend, setWeeklyTrend] = useState<
-    Array<{ week: string; registered: number; first_completed: number; five_completed: number }>
-  >([]);
-  const [summary, setSummary] = useState<{
-    total_registered: number;
-    onboarded_rate: number;
-    avg_time_to_first_completion_hours: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  interface OnboardingResponse {
+    funnel: Array<{ stage: string; count: number; percentage: number; drop_off_rate: number }>;
+    weeklyTrend: Array<{ week: string; registered: number; first_completed: number; five_completed: number }>;
+    summary: {
+      total_registered: number;
+      onboarded_rate: number;
+      avg_time_to_first_completion_hours: number;
+    } | null;
+  }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
+  const { data, loading, error } = useAnalyticsQuery<OnboardingResponse>({
+    endpoint: '/api/admin/analytics/onboarding',
+    transform: (json) => ({
+      funnel: (json.funnel as OnboardingResponse['funnel']) || [],
+      weeklyTrend: (json.weekly_trend as OnboardingResponse['weeklyTrend']) || [],
+      summary: json.summary as OnboardingResponse['summary'],
+    }),
+  });
 
-    fetch(`/api/admin/analytics/onboarding?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch onboarding funnel'))))
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setFunnel(data.funnel || []);
-          setWeeklyTrend(data.weekly_trend || []);
-          setSummary(data.summary);
-        }
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const funnel = data?.funnel ?? [];
+  const weeklyTrend = data?.weeklyTrend ?? [];
+  const summary = data?.summary ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -8,8 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertCircle, TrendingDown, TrendingUp, Minus, Shield } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface ChurnPrediction {
   user_id: string;
@@ -31,37 +31,11 @@ interface ChurnPredictionTableProps {
 export default function ChurnPredictionTable({
   apiEndpoint = '/api/admin/analytics/churn-prediction',
 }: ChurnPredictionTableProps) {
-  const [data, setData] = useState<ChurnPrediction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error } = useAnalyticsQuery<ChurnPrediction[]>({
+    endpoint: apiEndpoint,
+    dataKey: 'predictions',
+  });
   const [filter, setFilter] = useState<string>('all');
-  const { startDate, endDate } = useDateRange();
-  const controllerRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`${apiEndpoint}?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) setData(data.predictions);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError' && !controller.signal.aborted) setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [apiEndpoint, startDate, endDate]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error) {
@@ -72,7 +46,7 @@ export default function ChurnPredictionTable({
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const filtered = filter === 'all' ? data : data.filter((d) => d.risk_level === filter);
 

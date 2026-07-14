@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { useDateRange } from '../analytics-dashboard';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
 import EmptyState from './empty-state';
 
 interface HourlyData {
@@ -25,42 +23,24 @@ interface DailyData {
 }
 
 export default function TimePatternsChart() {
-  const [hourly, setHourly] = useState<HourlyData[]>([]);
-  const [daily, setDaily] = useState<DailyData[]>([]);
-  const [peakHour, setPeakHour] = useState(0);
-  const [peakDay, setPeakDay] = useState('0');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (startDate) params.set('startDate', String(startDate));
-        if (endDate) params.set('endDate', String(endDate));
-        const res = await fetch(`/api/admin/analytics/time-patterns?${params}`, { signal: controller.signal });
-        const json = await res.json();
-        if (!controller.signal.aborted) {
-          setHourly(json.hourly || []);
-          setDaily(json.daily || []);
-          setPeakHour(json.peak_hour || 0);
-          setPeakDay(json.peak_day || '0');
-        }
-      } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          logger.error('Time patterns fetch failed', err);
-          setError(t('analytics.error'));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-    loadData();
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<{
+    hourly: HourlyData[];
+    daily: DailyData[];
+    peak_hour: number;
+    peak_day: string;
+  }>({
+    endpoint: '/api/admin/analytics/time-patterns',
+    transform: (json) => ({
+      hourly: (json.hourly as HourlyData[]) || [],
+      daily: (json.daily as DailyData[]) || [],
+      peak_hour: (json.peak_hour as number) || 0,
+      peak_day: (json.peak_day as string) || '0',
+    }),
+  });
+  const hourly = data?.hourly ?? [];
+  const daily = data?.daily ?? [];
+  const peakHour = data?.peak_hour ?? 0;
+  const peakDay = data?.peak_day ?? '0';
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-8">{error}</div>;

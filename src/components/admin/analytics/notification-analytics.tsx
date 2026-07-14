@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Mail, Send, CheckCircle, XCircle } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
 import {
   BarChart,
   Bar,
@@ -21,6 +19,7 @@ import {
 } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EmptyState from './empty-state';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface ChannelStats {
   channel: string;
@@ -46,53 +45,40 @@ interface DeliveryTrendEntry {
 }
 
 export default function NotificationAnalytics() {
-  const [channels, setChannels] = useState<ChannelStats[]>([]);
-  const [emailQueue, setEmailQueue] = useState<{
-    total: number;
-    sent: number;
-    pending: number;
-    failed: number;
-    retrying: number;
-  } | null>(null);
-  const [recentFailures, setRecentFailures] = useState<FailureEntry[]>([]);
-  const [deliveryTrend, setDeliveryTrend] = useState<DeliveryTrendEntry[]>([]);
-  const [overallStats, setOverallStats] = useState<{
-    total_sent: number;
-    total_failed: number;
-    overall_success_rate: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-  const controllerRef = useRef<AbortController | null>(null);
+  interface NotificationResponse {
+    channels: ChannelStats[];
+    emailQueue: {
+      total: number;
+      sent: number;
+      pending: number;
+      failed: number;
+      retrying: number;
+    } | null;
+    recentFailures: FailureEntry[];
+    deliveryTrend: DeliveryTrendEntry[];
+    overallStats: {
+      total_sent: number;
+      total_failed: number;
+      overall_success_rate: number;
+    } | null;
+  }
 
-  useEffect(() => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
+  const { data, loading, error } = useAnalyticsQuery<NotificationResponse>({
+    endpoint: '/api/admin/analytics/notifications',
+    transform: (json) => ({
+      channels: (json.by_channel as ChannelStats[]) || [],
+      emailQueue: json.email_queue as NotificationResponse['emailQueue'],
+      recentFailures: (json.recent_failures as FailureEntry[]) || [],
+      deliveryTrend: (json.delivery_trend as DeliveryTrendEntry[]) || [],
+      overallStats: json.overall_stats as NotificationResponse['overallStats'],
+    }),
+  });
 
-    fetch(`/api/admin/analytics/notifications?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch notification analytics'))))
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setChannels(data.by_channel || []);
-          setEmailQueue(data.email_queue);
-          setRecentFailures(data.recent_failures || []);
-          setDeliveryTrend(data.delivery_trend || []);
-          setOverallStats(data.overall_stats);
-        }
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError' && !controller.signal.aborted) setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const channels = data?.channels ?? [];
+  const emailQueue = data?.emailQueue ?? null;
+  const recentFailures = data?.recentFailures ?? [];
+  const deliveryTrend = data?.deliveryTrend ?? [];
+  const overallStats = data?.overallStats ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

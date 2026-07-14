@@ -1,39 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, BookOpen, Target, AlertTriangle } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EmptyState from './empty-state';
 
 export default function TopicMastery() {
-  const [byCategory, setByCategory] = useState<
-    Array<{
+  const { data, loading, error } = useAnalyticsQuery<{
+    by_category: Array<{
       category: string;
       task_count: number;
       total_completions: number;
       unique_students: number;
       avg_attempts: number;
       completion_rate: number;
-    }>
-  >([]);
-  const [byDifficulty, setByDifficulty] = useState<
-    Array<{
+    }>;
+    by_difficulty: Array<{
       difficulty: string;
       task_count: number;
       total_completions: number;
       unique_students: number;
       avg_attempts: number;
       first_attempt_rate: number;
-    }>
-  >([]);
-  const [hardestTasks, setHardestTasks] = useState<
-    Array<{
+    }>;
+    hardest_tasks: Array<{
       task_id: string;
       task_title: string;
       difficulty: string;
@@ -41,23 +37,18 @@ export default function TopicMastery() {
       completions: number;
       avg_attempts: number;
       failure_rate: number;
-    }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    fetch('/api/admin/analytics/topic-mastery')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch topic mastery'))))
-      .then((data) => {
-        setByCategory(data.by_category || []);
-        setByDifficulty(data.by_difficulty || []);
-        setHardestTasks(data.hardest_tasks || []);
-      })
-      .catch(() => setError(t('analytics.error')))
-      .finally(() => setLoading(false));
-  }, [startDate, endDate]);
+    }>;
+  }>({
+    endpoint: '/api/admin/analytics/topic-mastery',
+    transform: (json) => ({
+      by_category: (json.by_category as []) || [],
+      by_difficulty: (json.by_difficulty as []) || [],
+      hardest_tasks: (json.hardest_tasks as []) || [],
+    }),
+  });
+  const byCategory = data?.by_category ?? [];
+  const byDifficulty = data?.by_difficulty ?? [];
+  const hardestTasks = data?.hardest_tasks ?? [];
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

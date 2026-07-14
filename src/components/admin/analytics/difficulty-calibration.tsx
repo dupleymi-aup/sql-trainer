@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -21,8 +21,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import EmptyState from './empty-state';
 
 export default function DifficultyCalibration() {
-  const [tasks, setTasks] = useState<
-    Array<{
+  const { data, loading, error } = useAnalyticsQuery<{
+    tasks: Array<{
       task_id: string;
       task_title: string;
       intended_difficulty: string;
@@ -33,26 +33,23 @@ export default function DifficultyCalibration() {
       actual_difficulty_score: number;
       recommended_difficulty: string;
       is_misclassified: boolean;
-    }>
-  >([]);
-  const [misclassifiedCount, setMisclassifiedCount] = useState(0);
-  const [totalTasks, setTotalTasks] = useState(0);
-  const [misclassifiedRate, setMisclassifiedRate] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetch('/api/admin/analytics/difficulty-calibration')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch difficulty calibration'))))
-      .then((data) => {
-        setTasks(data.tasks || []);
-        setMisclassifiedCount(data.misclassified_count || 0);
-        setTotalTasks(data.total_tasks || 0);
-        setMisclassifiedRate(data.misclassified_rate || 0);
-      })
-      .catch(() => setError(t('analytics.error')))
-      .finally(() => setLoading(false));
-  }, []);
+    }>;
+    misclassified_count: number;
+    total_tasks: number;
+    misclassified_rate: number;
+  }>({
+    endpoint: '/api/admin/analytics/difficulty-calibration',
+    transform: (json) => ({
+      tasks: (json.tasks as []) || [],
+      misclassified_count: (json.misclassified_count as number) || 0,
+      total_tasks: (json.total_tasks as number) || 0,
+      misclassified_rate: (json.misclassified_rate as number) || 0,
+    }),
+  });
+  const tasks = data?.tasks ?? [];
+  const misclassifiedCount = data?.misclassified_count ?? 0;
+  const totalTasks = data?.total_tasks ?? 0;
+  const misclassifiedRate = data?.misclassified_rate ?? 0;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

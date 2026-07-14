@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Activity, Users, Clock, RefreshCw } from 'lucide-react';
@@ -8,30 +9,16 @@ import { t } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
 
 export default function LiveActivity() {
-  const [data, setData] = useState<{
+  const { data, loading, error, refetch } = useAnalyticsQuery<{
     active_now: number;
     active_last_5min: Array<{ id: string; name: string; email: string; last_active: number }>;
     active_last_hour: number;
     active_last_24h: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  }>({ endpoint: '/api/admin/analytics/live' });
 
   const fetchData = useCallback(() => {
-    fetch('/api/admin/analytics/live')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch'))))
-      .then((d) => {
-        setData(d);
-        setError('');
-      })
-      .catch(() => setError(t('analytics.error')))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
+    refetch();
+  }, [refetch]);
   const { refresh, isPaused } = usePolling(fetchData, { intervalMs: 30000 });
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
