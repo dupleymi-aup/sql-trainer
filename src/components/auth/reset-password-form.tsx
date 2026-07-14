@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import Link from 'next/link';
 import { Loader2, Mail, Lock, AlertCircle, CheckCircle2, KeyRound, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { safeFetch } from '@/lib/safe-fetch';
 import { evaluatePasswordStrength } from '@/lib/password-strength';
 import { logger } from '@/lib/logger';
 
@@ -86,7 +87,7 @@ export default function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await safeFetch('/api/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -129,7 +130,7 @@ export default function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
+      const res = await safeFetch('/api/auth/reset-password', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, newPassword }),

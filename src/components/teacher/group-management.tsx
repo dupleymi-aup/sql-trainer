@@ -39,6 +39,7 @@ import {
   AlertCircle,
   X,
 } from 'lucide-react';
+import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 import { useToast } from '@/hooks/use-toast';
@@ -150,7 +151,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
     }
 
     try {
-      const res = await fetch('/api/teacher/groups', {
+      const res = await safeFetch('/api/teacher/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -204,7 +205,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
       .filter((e) => e.length > 0);
 
     try {
-      const res = await fetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
+      const res = await safeFetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ emails }),
@@ -238,7 +239,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
     if (!selectedGroup) return;
 
     try {
-      const res = await fetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
+      const res = await safeFetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: [studentId] }),
@@ -274,7 +275,7 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
     if (!selectedGroup || selectedStudents.size === 0) return;
 
     try {
-      const res = await fetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
+      const res = await safeFetch(`/api/teacher/groups/${selectedGroup.id}/members`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentIds: Array.from(selectedStudents) }),

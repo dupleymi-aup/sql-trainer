@@ -3,6 +3,7 @@
 import type * as React from 'react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
 import { Deadline } from '@/lib/db-users';
 import { Button } from '@/components/ui/button';
@@ -75,7 +76,7 @@ export function CreateDeadlineDialog({ open, onOpenChange, onSuccess, deadline }
       if (isEdit && !deadline) throw new Error(t('admin.deadline.notFound'));
       const url = isEdit ? `/api/admin/deadlines/${deadline.id}` : '/api/admin/deadlines';
       const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const res = await safeFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, type, targetType, targetId: targetId || null, dueAt }),

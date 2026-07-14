@@ -11,6 +11,7 @@ import { type DatabaseInfo } from '@/lib/sql-engine';
 import { t } from '@/lib/i18n';
 import { getNextHintLevel, generateProgressiveHints, calculateHintPenalty } from '@/lib/progressive-hints';
 import { logger } from '@/lib/logger';
+import { WidgetErrorBoundary } from '@/components/widget-error-boundary';
 import { useQueryExecutor } from '@/hooks/use-query-executor';
 import { TimerDisplay } from '@/components/timer-display';
 import ResultsTable from '@/components/results-table';
@@ -476,7 +477,9 @@ export default function HomePage() {
               <SheetHeader className="border-b border-border px-4 sm:px-5 py-3 sm:py-4 bg-gradient-to-r from-muted/50 to-muted/30">
                 <SheetTitle className="text-base font-semibold">{t('header.tasks')}</SheetTitle>
               </SheetHeader>
-              <Sidebar />
+              <WidgetErrorBoundary name="Sidebar">
+                <Sidebar />
+              </WidgetErrorBoundary>
             </SheetContent>
           </Sheet>
 
@@ -574,7 +577,9 @@ export default function HomePage() {
           } bg-gradient-to-r from-muted/40 to-muted/20`}
         >
           <div className="w-[280px]">
-            <Sidebar />
+            <WidgetErrorBoundary name="Sidebar">
+              <Sidebar />
+            </WidgetErrorBoundary>
           </div>
         </aside>
 
@@ -642,17 +647,19 @@ export default function HomePage() {
                     onClose={() => setExplainPlan(null)}
                   />
                 ) : lastResult ? (
-                  <ResultsTable
-                    success={lastResult.success}
-                    columns={lastResult.columns}
-                    rows={lastResult.rows}
-                    error={lastResult.error}
-                    executionTime={lastResult.executionTime}
-                    message={lastResult.message}
-                    verification={verification || undefined}
-                    suggestion={lastResult.suggestion}
-                    isExecuting={isExecuting}
-                  />
+                  <WidgetErrorBoundary name="Results">
+                    <ResultsTable
+                      success={lastResult.success}
+                      columns={lastResult.columns}
+                      rows={lastResult.rows}
+                      error={lastResult.error}
+                      executionTime={lastResult.executionTime}
+                      message={lastResult.message}
+                      verification={verification || undefined}
+                      suggestion={lastResult.suggestion}
+                      isExecuting={isExecuting}
+                    />
+                  </WidgetErrorBoundary>
                 ) : (
                   <EmptyResults />
                 )}
@@ -668,33 +675,35 @@ export default function HomePage() {
               <ScrollArea className="h-full">
                 <div className="p-3">
                   {currentTask ? (
-                    <TaskPanel
-                      task={currentTask}
-                      isCompleted={currentTaskId ? isTaskCompleted(currentTaskId) : false}
-                      hintLevel={hintLevel}
-                      totalHintPenalty={totalHintPenalty}
-                      onRevealNextHint={() => {
-                        const nextLevel = getNextHintLevel(hintLevel);
-                        if (nextLevel !== null && currentTask) {
-                          setHintLevel(nextLevel);
-                          const hints = generateProgressiveHints(
-                            currentTask.id,
-                            currentTask.hint,
-                            currentTask.taskText,
-                            currentTask.progressiveHints,
-                          );
-                          setTotalHintPenalty(calculateHintPenalty(hints, nextLevel));
-                        }
-                      }}
-                      solutionVisible={solutionVisible}
-                      onShowSolution={() => setSolutionVisible(!solutionVisible)}
-                      onUseSolution={(sql) => setEditorContent(sql)}
-                      onNextTask={goToNextTask}
-                      onNextRelated={(index) => goToRelatedTask(index)}
-                      nextTaskLabel={nextTaskInfo.label}
-                      allCompleted={nextTaskInfo.allCompleted}
-                      relatedTasks={relatedTasks}
-                    />
+                    <WidgetErrorBoundary name="Task Panel">
+                      <TaskPanel
+                        task={currentTask}
+                        isCompleted={currentTaskId ? isTaskCompleted(currentTaskId) : false}
+                        hintLevel={hintLevel}
+                        totalHintPenalty={totalHintPenalty}
+                        onRevealNextHint={() => {
+                          const nextLevel = getNextHintLevel(hintLevel);
+                          if (nextLevel !== null && currentTask) {
+                            setHintLevel(nextLevel);
+                            const hints = generateProgressiveHints(
+                              currentTask.id,
+                              currentTask.hint,
+                              currentTask.taskText,
+                              currentTask.progressiveHints,
+                            );
+                            setTotalHintPenalty(calculateHintPenalty(hints, nextLevel));
+                          }
+                        }}
+                        solutionVisible={solutionVisible}
+                        onShowSolution={() => setSolutionVisible(!solutionVisible)}
+                        onUseSolution={(sql) => setEditorContent(sql)}
+                        onNextTask={goToNextTask}
+                        onNextRelated={(index) => goToRelatedTask(index)}
+                        nextTaskLabel={nextTaskInfo.label}
+                        allCompleted={nextTaskInfo.allCompleted}
+                        relatedTasks={relatedTasks}
+                      />
+                    </WidgetErrorBoundary>
                   ) : (
                     <WelcomePanel
                       onStartTraining={handleStartTraining}
@@ -708,7 +717,9 @@ export default function HomePage() {
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={30} minSize={20}>
               <div className="p-3">
-                <SchemaViewer schema={schemaInfo} onPreviewTable={handlePreviewTable} />
+                <WidgetErrorBoundary name="Schema Viewer">
+                  <SchemaViewer schema={schemaInfo} onPreviewTable={handlePreviewTable} />
+                </WidgetErrorBoundary>
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />

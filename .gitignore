@@ -61,4 +61,7 @@ server.log
 _archive_extracted/
 *.zip
 
+# deployment configs (contain secrets variant per environment)
+.env.amvera
+
 .mimocode/

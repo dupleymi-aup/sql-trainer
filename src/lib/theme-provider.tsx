@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import Script from 'next/script';
 
 const THEME_KEY = 'theme';
 const DARK_QUERY = '(prefers-color-scheme: dark)';
@@ -113,26 +112,5 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
     [theme, setTheme, resolvedTheme, systemTheme],
   );
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document */}
-      <Script id="theme-init" strategy="beforeInteractive">
-        {`
-          (function() {
-            try {
-              var t = localStorage.getItem('${THEME_KEY}');
-              if (!t) { t = '${defaultTheme}'; }
-              var r = t === 'system'
-                ? (window.matchMedia('${DARK_QUERY}').matches ? 'dark' : 'light')
-                : t;
-              if (r === 'dark') { document.documentElement.classList.add('dark'); }
-              else { document.documentElement.classList.remove('dark'); }
-              document.documentElement.style.colorScheme = r;
-            } catch(e) {}
-          })();
-        `}
-      </Script>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

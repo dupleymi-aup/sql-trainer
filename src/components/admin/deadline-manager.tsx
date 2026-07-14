@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 import { formatDateDisplayWithYear } from '@/lib/date-utils';
@@ -77,7 +78,7 @@ export function DeadlineManager() {
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
-      const res = await fetch(`/api/admin/deadlines/${deleteId}`, { method: 'DELETE' });
+      const res = await safeFetch(`/api/admin/deadlines/${deleteId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || t('admin.deadline.deleteFailed'));

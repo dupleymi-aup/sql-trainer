@@ -9,6 +9,7 @@ import { adaptPostgreSQLToSQLite, adaptWithWarnings } from './postgresql-adapter
 import { adaptClickHouseToSQLite, adaptClickHouseWithWarnings } from './clickhouse-adapter';
 import { adaptMySQLWithWarnings, adaptMySQLToSQLite } from './mysql-adapter';
 import { t } from './i18n';
+import { recordSqlPerformance } from './sql-performance-monitor';
 
 export interface QueryResult {
   success: boolean;
@@ -360,6 +361,18 @@ function getSuggestionForError(error: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Detect the type of SQL query from the statement text.
+ */
+function getQueryType(sql: string): 'SELECT' | 'INSERT' | 'UPDATE' | 'DELETE' | 'DDL' {
+  const trimmed = sql.trim().toUpperCase();
+  if (trimmed.startsWith('SELECT') || trimmed.startsWith('WITH')) return 'SELECT';
+  if (trimmed.startsWith('INSERT')) return 'INSERT';
+  if (trimmed.startsWith('UPDATE')) return 'UPDATE';
+  if (trimmed.startsWith('DELETE')) return 'DELETE';
+  return 'DDL';
+}
+
 /** Maximum number of rows returned by a query */
 const MAX_ROWS = 1000;
 
@@ -497,6 +510,15 @@ function executeStatements(db: Database.Database, statements: string[], batchSta
           executionTime,
           message: truncated ? t('sql.success.rowsLimited', { maxRows: String(MAX_ROWS) }) : undefined,
         };
+
+        // Record performance metric
+        recordSqlPerformance({
+          queryType: 'SELECT',
+          executionTimeMs: executionTime,
+          rowsReturned: rows.length,
+          hasError: false,
+          dbType: 'sqlite',
+        });
       } else if (isDDL(stmt)) {
         // Wrap DDL in transaction for atomicity — rollback on error
         try {
@@ -519,6 +541,16 @@ function executeStatements(db: Database.Database, statements: string[], batchSta
             /* Ignore rollback errors */
           }
           const errorMsg = ddlErr instanceof Error ? ddlErr.message : String(ddlErr);
+
+          recordSqlPerformance({
+            queryType: 'DDL',
+            executionTimeMs: performance.now() - stmtStartTime,
+            rowsReturned: 0,
+            hasError: true,
+            errorMessage: errorMsg,
+            dbType: 'sqlite',
+          });
+
           return {
             success: false,
             columns: [],
@@ -540,9 +572,30 @@ function executeStatements(db: Database.Database, statements: string[], batchSta
           message: t('sql.success.dml', { changes: String(result.changes) }),
           affectedRows: result.changes,
         };
+
+        // Record performance metric
+        const queryType = getQueryType(stmt);
+        recordSqlPerformance({
+          queryType,
+          executionTimeMs: executionTime,
+          rowsReturned: result.changes,
+          hasError: false,
+          dbType: 'sqlite',
+        });
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
+
+      // Record error metric
+      recordSqlPerformance({
+        queryType: getQueryType(stmt),
+        executionTimeMs: performance.now() - stmtStartTime,
+        rowsReturned: 0,
+        hasError: true,
+        errorMessage: errorMsg,
+        dbType: 'sqlite',
+      });
+
       return {
         success: false,
         columns: [],

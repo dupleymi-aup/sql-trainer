@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/lib/theme-provider';
+import ThemeInitScript from '@/components/theme-init-script';
 import ServiceWorkerRegister from '@/components/service-worker-register';
 import PwaInstallPrompt from '@/components/pwa-install-prompt';
 import WebVitals from '@/components/web-vitals';
@@ -68,6 +69,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <CsrfTokenMeta />
+        <ThemeInitScript />
         <ThemeProvider defaultTheme="system">
           {children}
           <Toaster />

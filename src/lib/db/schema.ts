@@ -324,6 +324,50 @@ export function initDatabase(): void {
     db.exec('ALTER TABLE users ADD COLUMN locked_until INTEGER DEFAULT NULL');
   }
 
+  // Performance monitoring tables
+  const hasWebVitals = tables.some((t) => t.name === 'web_vitals');
+  if (!hasWebVitals) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS web_vitals (
+        id TEXT PRIMARY KEY,
+        metric_name TEXT NOT NULL,
+        value REAL NOT NULL,
+        rating TEXT NOT NULL,
+        delta REAL NOT NULL,
+        page TEXT NOT NULL,
+        navigation_type TEXT,
+        user_agent TEXT,
+        country TEXT,
+        device_type TEXT,
+        collected_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_web_vitals_metric ON web_vitals(metric_name);
+      CREATE INDEX IF NOT EXISTS idx_web_vitals_page ON web_vitals(page);
+      CREATE INDEX IF NOT EXISTS idx_web_vitals_collected ON web_vitals(collected_at);
+    `);
+  }
+
+  const hasSqlPerformance = tables.some((t) => t.name === 'sql_performance');
+  if (!hasSqlPerformance) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sql_performance (
+        id TEXT PRIMARY KEY,
+        query_type TEXT NOT NULL,
+        execution_time_ms REAL NOT NULL,
+        rows_returned INTEGER DEFAULT 0,
+        has_error INTEGER DEFAULT 0,
+        error_message TEXT,
+        db_type TEXT NOT NULL,
+        task_id TEXT,
+        user_id TEXT,
+        collected_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_sql_perf_type ON sql_performance(query_type);
+      CREATE INDEX IF NOT EXISTS idx_sql_perf_time ON sql_performance(collected_at);
+      CREATE INDEX IF NOT EXISTS idx_sql_perf_task ON sql_performance(task_id);
+    `);
+  }
+
   try {
     const deadlineColumns = db.pragma('table_info(deadlines)') as { name: string }[];
     if (!deadlineColumns.some((c) => c.name === 'group_id')) {

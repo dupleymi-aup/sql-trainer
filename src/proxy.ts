@@ -88,21 +88,19 @@ export default auth(async (request) => {
   // Inject request ID for traceability across logs and client debugging
   response.headers.set('X-Request-Id', requestId);
 
-  // Generate CSRF token for authenticated requests only when missing
-  // Use a flag to avoid regenerating on every request which breaks multi-tab usage
-  if (session) {
-    const existingCsrfCookie = getCookieFromHeader(request, CSRF_COOKIE_NAME);
-    if (!existingCsrfCookie) {
-      try {
-        const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();
-        response.headers.set('X-CSRF-Token', rawToken);
-        for (const cookieHeader of setCookieHeaders) {
-          response.headers.append('Set-Cookie', cookieHeader);
-        }
-      } catch {
-        // CSRF token generation is non-critical; allow request to proceed
-        logger.warn('Failed to generate CSRF token, proceeding without it');
+  // Generate CSRF token for all visitors when missing
+  // (needed for unauthenticated routes like register and reset-password)
+  const existingCsrfCookie = getCookieFromHeader(request, CSRF_COOKIE_NAME);
+  if (!existingCsrfCookie) {
+    try {
+      const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();
+      response.headers.set('X-CSRF-Token', rawToken);
+      for (const cookieHeader of setCookieHeaders) {
+        response.headers.append('Set-Cookie', cookieHeader);
       }
+    } catch {
+      // CSRF token generation is non-critical; allow request to proceed
+      logger.warn('Failed to generate CSRF token, proceeding without it');
     }
   }
 

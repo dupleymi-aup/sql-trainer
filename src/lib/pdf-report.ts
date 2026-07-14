@@ -3,7 +3,6 @@
  * Uses window.print() with styled HTML for PDF generation
  */
 import { escapeHtml } from './html-utils';
-import { toast } from 'sonner';
 import type { Locale } from '@/lib/i18n';
 import { getTasksByDifficulty } from '@/lib/training-tasks';
 
@@ -987,7 +986,7 @@ const pdfAnalyticsTranslations = {
 function openPrintWindow(content: string): void {
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
-    toast.error('Pop-up blocked. Please allow pop-ups for PDF export.');
+    alert('Pop-up blocked. Please allow pop-ups for PDF export.');
     return;
   }
   printWindow.document.write(content);

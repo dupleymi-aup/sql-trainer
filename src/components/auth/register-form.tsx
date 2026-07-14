@@ -25,6 +25,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { safeFetch } from '@/lib/safe-fetch';
 import { ROLE_LABELS } from '@/lib/rbac';
 import { logger } from '@/lib/logger';
 import type { Role } from '@/lib/rbac';
@@ -74,7 +75,7 @@ export default function RegisterForm() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await safeFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, phone: phone || undefined, role }),

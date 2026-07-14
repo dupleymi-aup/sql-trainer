@@ -19,6 +19,7 @@ import { createUISlice, type UISlice } from './ui-slice';
 import { createOnboardingSlice, type OnboardingSlice } from './onboarding-slice';
 import { createTimerSlice } from './timer-slice';
 import type { TimerSlice } from './timer-slice-types';
+import type { StoreApi } from 'zustand';
 import { TRAINING_TASKS, getTaskById } from '@/lib/training-tasks';
 import { calculateLevel } from './level-calculator';
 
@@ -72,7 +73,6 @@ type CombinedState = DatabaseSlice &
 // Each slice creator is typed against its own narrow state, but the composed
 // store passes the full CombinedState's set/get/store. These casts bridge that gap.
 // This is the recommended Zustand pattern for slice composition.
-import type { StoreApi } from 'zustand';
 
 type SliceSet = StoreApi<CombinedState>['setState'];
 type SliceGet = StoreApi<CombinedState>['getState'];

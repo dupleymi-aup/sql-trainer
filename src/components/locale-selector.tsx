@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,7 +18,12 @@ const LOCALES: { code: Locale; label: string; flag: string }[] = [
 ];
 
 export default function LocaleSelector() {
+  const [mounted, setMounted] = useState(false);
   const [locale, setLocalLocale] = useState<Locale>(() => getLocale());
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLocaleChange = (newLocale: Locale) => {
     setLocale(newLocale);
@@ -34,25 +39,29 @@ export default function LocaleSelector() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
           <Globe className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">
-            {current?.flag} {current?.label}
-          </span>
+          {mounted && (
+            <span className="hidden sm:inline">
+              {current?.flag} {current?.label}
+            </span>
+          )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {LOCALES.map((l) => (
-          <DropdownMenuItem
-            key={l.code}
-            onClick={() => handleLocaleChange(l.code)}
-            className="flex items-center justify-between"
-          >
-            <span>
-              {l.flag} {l.label}
-            </span>
-            {locale === l.code && <Check className="h-4 w-4 text-emerald-500" />}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
+      {mounted && (
+        <DropdownMenuContent align="end">
+          {LOCALES.map((l) => (
+            <DropdownMenuItem
+              key={l.code}
+              onClick={() => handleLocaleChange(l.code)}
+              className="flex items-center justify-between"
+            >
+              <span>
+                {l.flag} {l.label}
+              </span>
+              {locale === l.code && <Check className="h-4 w-4 text-emerald-500" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      )}
     </DropdownMenu>
   );
 }

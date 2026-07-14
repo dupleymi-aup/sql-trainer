@@ -19,6 +19,7 @@ const eslintConfig = [
         URL: 'readonly',
         URLSearchParams: 'readonly',
         fetch: 'readonly',
+        RequestInfo: 'readonly',
         Request: 'readonly',
       },
     },

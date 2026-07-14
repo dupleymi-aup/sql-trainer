@@ -35,6 +35,7 @@ import {
   Ban,
   CheckCircle,
 } from 'lucide-react';
+import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 
@@ -107,9 +108,9 @@ export default function UserTable() {
     controllerRef.current = controller;
     try {
       const [usersRes, deletedRes, bannedRes] = await Promise.all([
-        fetch('/api/admin/users', { signal: controller.signal }),
-        fetch('/api/admin/users/deleted', { signal: controller.signal }),
-        fetch('/api/admin/users/banned', { signal: controller.signal }),
+        safeFetch('/api/admin/users', { signal: controller.signal }),
+        safeFetch('/api/admin/users/deleted', { signal: controller.signal }),
+        safeFetch('/api/admin/users/banned', { signal: controller.signal }),
       ]);
       if (!usersRes.ok) throw new Error('Failed to load users');
       const usersData = await usersRes.json();
@@ -175,7 +176,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
+      const res = await safeFetch(`/api/admin/users/${userId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
@@ -194,7 +195,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      const res = await safeFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || t('admin.users.deleteFailed'));
@@ -234,7 +235,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch('/api/admin/users/bulk', {
+      const res = await safeFetch('/api/admin/users/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -268,7 +269,7 @@ export default function UserTable() {
     setSuccess('');
     setCreating(true);
     try {
-      const res = await fetch('/api/admin/users/create', {
+      const res = await safeFetch('/api/admin/users/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser),
@@ -294,7 +295,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}/restore`, { method: 'POST' });
+      const res = await safeFetch(`/api/admin/users/${userId}/restore`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to restore user');
@@ -313,7 +314,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}/ban`, {
+      const res = await safeFetch(`/api/admin/users/${userId}/ban`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason: reason || null }),
@@ -335,7 +336,7 @@ export default function UserTable() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`/api/admin/users/${userId}/unban`, { method: 'POST' });
+      const res = await safeFetch(`/api/admin/users/${userId}/unban`, { method: 'POST' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to unban user');
@@ -363,7 +364,7 @@ export default function UserTable() {
     setSuccess('');
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+      const res = await safeFetch(`/api/admin/users/${editUser.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
