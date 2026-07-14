@@ -33,37 +33,51 @@ export const BLOCKED_PREFIXES = [
 /**
  * Tokenize SQL to extract statement types, handling comments and strings.
  * This prevents bypassing filters via comment injection.
+ * Returns the first word of each semicolon-separated statement.
  */
 export function extractStatementTypes(sql: string): string[] {
   const statements: string[] = [];
-  let i = 0;
   const upper = sql.toUpperCase();
 
-  while (i < upper.length) {
-    // Skip block comments
+  // First, mask comments and string literals to avoid splitting on semicolons inside them
+  let i = 0;
+  const masked = upper.split('');
+  while (i < masked.length) {
+    // Mask block comments
     if (upper.startsWith('/*', i)) {
       const end = upper.indexOf('*/', i + 2);
-      i = end === -1 ? upper.length : end + 2;
+      const endIdx = end === -1 ? masked.length - 1 : end + 1;
+      for (let j = i; j <= endIdx && j < masked.length; j++) {
+        masked[j] = ' ';
+      }
+      i = end === -1 ? masked.length : end + 2;
       continue;
     }
 
-    // Skip line comments
+    // Mask line comments
     if (upper.startsWith('--', i)) {
       const end = upper.indexOf('\n', i);
-      i = end === -1 ? upper.length : end + 1;
+      const endIdx = end === -1 ? masked.length - 1 : end;
+      for (let j = i; j <= endIdx && j < masked.length; j++) {
+        masked[j] = ' ';
+      }
+      i = end === -1 ? masked.length : end + 1;
       continue;
     }
 
-    // Skip string literals
+    // Mask string literals
     if (upper[i] === "'" || upper[i] === '"') {
       const quote = upper[i];
+      masked[i] = ' ';
       i++;
-      while (i < upper.length) {
-        // SQL uses '' for escaped quotes, not \'
+      while (i < masked.length) {
         if (upper[i] === quote && i + 1 < upper.length && upper[i + 1] === quote) {
-          i += 2; // Skip escaped quote
+          masked[i] = ' ';
+          masked[i + 1] = ' ';
+          i += 2;
           continue;
         }
+        masked[i] = ' ';
         if (upper[i] === quote) break;
         i++;
       }
@@ -71,22 +85,37 @@ export function extractStatementTypes(sql: string): string[] {
       continue;
     }
 
-    // Read a word
-    if (/\s/.test(upper[i])) {
-      i++;
-      continue;
-    }
+    i++;
+  }
 
-    let word = '';
-    while (i < upper.length && /[A-Z0-9_.]/.test(upper[i])) {
-      word += upper[i];
-      i++;
-    }
+  // Now split by semicolons (comments and strings are already masked)
+  const cleanSql = masked.join('');
+  const parts = cleanSql.split(';');
 
-    if (word) {
-      // Check if it's a known statement type
-      const firstWord = word.split('.')[0];
-      statements.push(firstWord);
+  for (const part of parts) {
+    // Skip empty parts
+    if (!part.trim()) continue;
+
+    // Extract the first word
+    let j = 0;
+    while (j < part.length) {
+      if (/\s/.test(part[j])) {
+        j++;
+        continue;
+      }
+
+      let word = '';
+      while (j < part.length && /[A-Z0-9_.]/.test(part[j])) {
+        word += part[j];
+        j++;
+      }
+
+      if (word) {
+        statements.push(word.split('.')[0]);
+        break;
+      }
+
+      j++;
     }
   }
 
@@ -112,6 +141,16 @@ export function validateTrainingSql(sql: string): string | null {
       if (stmt === blocked || stmt.startsWith(blocked + ' ')) {
         return `Request contains blocked commands (${stmt}). In learning mode, only SELECT, WITH, EXPLAIN, PRAGMA are allowed.`;
       }
+    }
+
+    // Special handling for PRAGMA: only safe PRAGMAs are allowed
+    if (stmt === 'PRAGMA') {
+      // PRAGMA writable_schema is dangerous - check the full SQL for this pattern
+      if (/\bPRAGMA\s+writable_schema\b/i.test(sql)) {
+        return `Request contains blocked commands (PRAGMA writable_schema). In learning mode, only SELECT, WITH, EXPLAIN, PRAGMA are allowed.`;
+      }
+      // Other PRAGMAs are allowed (e.g., PRAGMA table_info)
+      continue;
     }
 
     // Check against allowed prefixes
