@@ -26,9 +26,9 @@ export function ReminderToastTrigger() {
   useEffect(() => {
     if (!session?.user?.id) return;
 
-    const fetchAndToast = async () => {
+    const fetchAndToast = async (signal?: AbortSignal) => {
       try {
-        const res = await fetch('/api/user/reminders');
+        const res = await fetch('/api/user/reminders', { signal });
         const data = await res.json();
         if (!res.ok || !data.reminders) return;
 
@@ -57,16 +57,21 @@ export function ReminderToastTrigger() {
           }
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         logger.error('fetch reminders:', err);
       }
     };
 
     // Show on mount
-    fetchAndToast();
+    const controller = new AbortController();
+    fetchAndToast(controller.signal);
 
     // Poll every 5 minutes
-    const interval = setInterval(fetchAndToast, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => fetchAndToast(), 5 * 60 * 1000);
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
   }, [session?.user?.id]);
 
   return null;

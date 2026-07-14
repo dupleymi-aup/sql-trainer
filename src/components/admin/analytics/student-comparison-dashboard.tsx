@@ -96,7 +96,7 @@ export default function StudentComparisonDashboard() {
         ? ['completion_rate', 'consistency_score', 'sessions_per_week'].map((metric) => {
             const entry: Record<string, string | number> = { metric: t(`analytics.studentComparison.${metric}`) };
             for (const student of comparisonData) {
-              entry[student.name] = (student as unknown as Record<string, unknown>)[metric] as number;
+              entry[student.name] = student[metric as keyof ComparisonStudent] as number;
             }
             return entry;
           })
