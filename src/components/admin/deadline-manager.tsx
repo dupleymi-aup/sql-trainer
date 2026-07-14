@@ -52,14 +52,15 @@ export function DeadlineManager() {
   const [editDeadline, setEditDeadline] = useState<Deadline | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  const fetchDeadlines = useCallback(async () => {
+  const fetchDeadlines = useCallback(async (signal?: AbortSignal) => {
     try {
       setError(null);
-      const res = await fetch('/api/admin/deadlines?scope=all');
+      const res = await fetch('/api/admin/deadlines?scope=all', { signal });
       if (!res.ok) throw new Error(t('admin.deadline.loadFailed'));
       const data = await res.json();
       setDeadlines(data.deadlines || []);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       logger.error('Failed to load deadlines:', err);
       setError(err instanceof Error ? err.message : t('admin.stats.loading'));
     } finally {
@@ -68,7 +69,9 @@ export function DeadlineManager() {
   }, []);
 
   useEffect(() => {
-    fetchDeadlines();
+    const controller = new AbortController();
+    fetchDeadlines(controller.signal);
+    return () => controller.abort();
   }, [fetchDeadlines]);
 
   const handleDelete = async () => {
@@ -101,7 +104,7 @@ export function DeadlineManager() {
     return (
       <div className="p-8 text-center">
         <p className="text-destructive">{error}</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={fetchDeadlines}>
+        <Button variant="outline" size="sm" className="mt-2" onClick={() => fetchDeadlines()}>
           {t('admin.users.retry', { default: 'Retry' })}
         </Button>
       </div>

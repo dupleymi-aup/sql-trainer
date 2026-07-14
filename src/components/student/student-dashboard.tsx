@@ -72,12 +72,12 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
       const [progressRes, recsRes, remindersRes] = await Promise.all([
-        fetch('/api/user/progress'),
-        fetch('/api/user/recommendations'),
-        fetch('/api/user/reminders'),
+        fetch('/api/user/progress', { signal }),
+        fetch('/api/user/recommendations', { signal }),
+        fetch('/api/user/reminders', { signal }),
       ]);
 
       if (!progressRes.ok || !recsRes.ok || !remindersRes.ok) {
@@ -107,6 +107,7 @@ export default function StudentDashboard() {
         setReminders(remindersData.reminders || []);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       logger.error('[StudentDashboard] Fetch data error', err);
       setError(t('dashboard.loadError', { default: 'Failed to load data' }));
     } finally {
@@ -121,7 +122,9 @@ export default function StudentDashboard() {
       router.push('/app');
       return;
     }
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [session, status, router, fetchData]);
 
   const handleStartTask = (taskId: string) => {

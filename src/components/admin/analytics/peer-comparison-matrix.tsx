@@ -8,7 +8,7 @@ import { AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface PeerComparisonEntry {
@@ -32,35 +32,17 @@ interface PeerComparisonEntry {
 }
 
 export default function PeerComparisonMatrix() {
-  const [data, setData] = useState<PeerComparisonEntry[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  const { data, loading, error } = useAnalyticsQuery<PeerComparisonEntry[]>({
+    endpoint: '/api/admin/analytics/peer-comparison',
+    dataKey: 'comparisons',
+  });
 
   useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/peer-comparison?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((result) => {
-        setData(result.comparisons);
-        if (result.comparisons.length > 0) {
-          setSelectedStudent((prev) => prev || result.comparisons[0].user_id);
-        }
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+    if (data && data.length > 0) {
+      setSelectedStudent((prev) => prev || data[0].user_id);
+    }
+  }, [data]);
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error) {
@@ -71,7 +53,7 @@ export default function PeerComparisonMatrix() {
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const selected = data.find((d) => d.user_id === selectedStudent);
 

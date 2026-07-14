@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertCircle, TrendingUp, TrendingDown, Minus, Target } from 'lucide-react';
 import StudentDetailDialog from './student-detail-dialog';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 import { TRAINING_TASKS } from '@/lib/training-tasks';
 
@@ -39,31 +39,12 @@ function TrendIcon({ trend }: { trend: string }) {
 }
 
 export default function StudentPerformanceCards() {
-  const [data, setData] = useState<StudentPerformanceCard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data, loading, error } = useAnalyticsQuery<StudentPerformanceCard[]>({
+    endpoint: '/api/admin/analytics/students',
+    dataKey: 'students',
+  });
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/students?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => setData(data.students))
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
 
   const handleViewDetails = (userId: string) => {
     setSelectedStudentId(userId);
@@ -79,7 +60,7 @@ export default function StudentPerformanceCards() {
       </Alert>
     );
   }
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const difficultyLabels: Record<string, string> = {
     beginner: t('analytics.student.beginner'),

@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface GradeDistributionEntry {
@@ -35,29 +34,10 @@ const BAR_COLORS = [
 export default function GradeDistributionChart({
   apiEndpoint = '/api/admin/analytics/grade-distribution',
 }: GradeDistributionChartProps) {
-  const [data, setData] = useState<GradeDistributionEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`${apiEndpoint}?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => setData(d.distribution))
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [apiEndpoint, startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<GradeDistributionEntry[]>({
+    endpoint: apiEndpoint,
+    dataKey: 'distribution',
+  });
 
   if (loading) return <p className="text-center py-4 text-muted-foreground">{t('analytics.loading')}</p>;
   if (error)
@@ -67,7 +47,7 @@ export default function GradeDistributionChart({
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const totalStudents = data.reduce((s, d) => s + d.student_count, 0);
 

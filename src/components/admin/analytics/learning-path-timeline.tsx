@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
 interface TimelineEntry {
   task_id: string;
@@ -20,34 +19,18 @@ interface LearningPathTimelineProps {
 }
 
 export default function LearningPathTimeline({ userId }: LearningPathTimelineProps) {
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/admin/analytics/student/${userId}/timeline`, { signal: controller.signal });
-        const json = await res.json();
-        setTimeline(json.timeline || []);
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          logger.error('Learning path timeline fetch failed', err);
-          setError(t('analytics.error'));
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-    return () => controller.abort();
-  }, [userId]);
+  const {
+    data: timeline,
+    loading,
+    error,
+  } = useAnalyticsQuery<TimelineEntry[]>({
+    endpoint: `/api/admin/analytics/student/${userId}/timeline`,
+    transform: (json) => (json.timeline as TimelineEntry[]) || [],
+  });
 
   if (loading) return <div className="flex justify-center py-4">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-4">{error}</div>;
-  if (timeline.length === 0)
+  if (!timeline || timeline.length === 0)
     return <div className="text-center py-4 text-muted-foreground">{t('analytics.noData')}</div>;
 
   const diffColors: Record<string, string> = {

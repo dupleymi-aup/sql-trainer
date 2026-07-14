@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle, Calendar, Clock, Users } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EmptyState from './empty-state';
 
@@ -34,39 +33,37 @@ interface OverdueStudent {
 }
 
 export default function DeadlineCompliance() {
-  const [deadlines, setDeadlines] = useState<DeadlineEntry[]>([]);
-  const [overdueStudents, setOverdueStudents] = useState<OverdueStudent[]>([]);
-  const [overallStats, setOverallStats] = useState<{
-    total_deadlines: number;
-    overall_compliance_rate: number;
-    total_on_time: number;
-    total_late: number;
-    total_missed: number;
-    avg_days_overdue: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  const { data, loading, error } = useAnalyticsQuery<{
+    deadlines: DeadlineEntry[];
+    overdue_students: OverdueStudent[];
+    overall_stats: {
+      total_deadlines: number;
+      overall_compliance_rate: number;
+      total_on_time: number;
+      total_late: number;
+      total_missed: number;
+      avg_days_overdue: number;
+    } | null;
+  }>({
+    endpoint: '/api/admin/analytics/deadline-compliance',
+    transform: (json) => ({
+      deadlines: (json.deadlines as DeadlineEntry[]) || [],
+      overdue_students: (json.overdue_students as OverdueStudent[]) || [],
+      overall_stats:
+        (json.overall_stats as {
+          total_deadlines: number;
+          overall_compliance_rate: number;
+          total_on_time: number;
+          total_late: number;
+          total_missed: number;
+          avg_days_overdue: number;
+        } | null) ?? null,
+    }),
+  });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/deadline-compliance?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch deadline compliance'))))
-      .then((data) => {
-        setDeadlines(data.deadlines || []);
-        setOverdueStudents(data.overdue_students || []);
-        setOverallStats(data.overall_stats);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const deadlines = data?.deadlines ?? [];
+  const overdueStudents = data?.overdue_students ?? [];
+  const overallStats = data?.overall_stats ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

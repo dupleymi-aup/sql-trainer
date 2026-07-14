@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface SkillBreakdownChartProps {
@@ -36,33 +36,17 @@ interface StudentSummary {
 }
 
 export default function SkillBreakdownChart({ apiEndpoint }: SkillBreakdownChartProps) {
-  const [data, setData] = useState<StudentSummary[] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
-  const { startDate, endDate } = useDateRange();
+  const { data, loading, error } = useAnalyticsQuery<StudentSummary[]>({
+    endpoint: apiEndpoint || '/api/admin/analytics/skills',
+    dataKey: 'breakdown',
+  });
 
   useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`${apiEndpoint || '/api/admin/analytics/skills'}?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => {
-        setData(d.breakdown);
-        if (d.breakdown.length > 0) setSelectedStudent(d.breakdown[0].user_id);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [apiEndpoint, startDate, endDate]);
+    if (data && data.length > 0) {
+      setSelectedStudent(data[0].user_id);
+    }
+  }, [data]);
 
   if (loading) return <p className="text-center py-4 text-muted-foreground">{t('analytics.loading')}</p>;
   if (error)

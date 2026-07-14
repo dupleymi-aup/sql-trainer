@@ -1,55 +1,55 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Flame, TrendingUp, Users } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import EmptyState from './empty-state';
 
-export default function StreakAnalytics() {
-  const [distribution, setDistribution] = useState<Array<{ range: string; student_count: number }>>([]);
-  const [topStreaks, setTopStreaks] = useState<
-    Array<{ user_id: string; name: string; streak_current: number; streak_longest: number; tasks_completed: number }>
-  >([]);
-  const [correlation, setCorrelation] = useState<
-    Array<{ streak_bucket: string; avg_tasks_completed: number; avg_completion_rate: number; student_count: number }>
-  >([]);
-  const [summary, setSummary] = useState<{
+interface StreakAnalyticsData {
+  distribution: Array<{ range: string; student_count: number }>;
+  top_streaks: Array<{
+    user_id: string;
+    name: string;
+    streak_current: number;
+    streak_longest: number;
+    tasks_completed: number;
+  }>;
+  streak_completion_correlation: Array<{
+    streak_bucket: string;
+    avg_tasks_completed: number;
+    avg_completion_rate: number;
+    student_count: number;
+  }>;
+  summary: {
     avg_current_streak: number;
     avg_longest_streak: number;
     max_streak: number;
     students_with_streak: number;
     total_students: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  };
+}
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
+export default function StreakAnalytics() {
+  const { data, loading, error } = useAnalyticsQuery<StreakAnalyticsData>({
+    endpoint: '/api/admin/analytics/streaks',
+    transform: (json) => ({
+      distribution: (json.distribution ?? []) as StreakAnalyticsData['distribution'],
+      top_streaks: (json.top_streaks ?? []) as StreakAnalyticsData['top_streaks'],
+      streak_completion_correlation: (json.streak_completion_correlation ??
+        []) as StreakAnalyticsData['streak_completion_correlation'],
+      summary: json.summary as StreakAnalyticsData['summary'],
+    }),
+  });
 
-    fetch(`/api/admin/analytics/streaks?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch streak analytics'))))
-      .then((data) => {
-        setDistribution(data.distribution || []);
-        setTopStreaks(data.top_streaks || []);
-        setCorrelation(data.streak_completion_correlation || []);
-        setSummary(data.summary);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const distribution = data?.distribution ?? [];
+  const topStreaks = data?.top_streaks ?? [];
+  const correlation = data?.streak_completion_correlation ?? [];
+  const summary = data?.summary ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

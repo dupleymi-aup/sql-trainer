@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useDateRange } from '../analytics-dashboard';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 import { TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 
@@ -22,41 +20,17 @@ interface LearningPaceEntry {
 }
 
 export default function LearningPaceChart() {
-  const [data, setData] = useState<LearningPaceEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (startDate) params.set('startDate', String(startDate));
-        if (endDate) params.set('endDate', String(endDate));
-        const res = await fetch(`/api/admin/analytics/learning-pace?${params}`, { signal: controller.signal });
-        if (!res.ok) throw new Error('Failed to load');
-        const json = await res.json();
-        setData(json.pace || []);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        logger.error('Learning pace fetch failed', err);
-        setError(t('analytics.error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<LearningPaceEntry[]>({
+    endpoint: '/api/admin/analytics/learning-pace',
+    dataKey: 'pace',
+  });
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-8">{error}</div>;
-  if (data.length === 0) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const avgVelocity =
-    data.length > 0 ? (data.reduce((sum, d) => sum + d.recent_velocity, 0) / data.length).toFixed(1) : '0';
+    data && data.length > 0 ? (data.reduce((sum, d) => sum + d.recent_velocity, 0) / data.length).toFixed(1) : '0';
 
   return (
     <Card>

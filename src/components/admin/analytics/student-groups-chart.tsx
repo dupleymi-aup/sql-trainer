@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface StudentGroupEntry {
@@ -19,36 +18,16 @@ interface StudentGroupEntry {
 }
 
 export default function StudentGroupsChart() {
-  const [data, setData] = useState<StudentGroupEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch('/api/admin/analytics/groups', { signal: controller.signal });
-        const json = await res.json();
-        if (!controller.signal.aborted) setData(json.groups || []);
-      } catch (err) {
-        if (!(err instanceof DOMException && err.name === 'AbortError')) {
-          logger.error('Student groups fetch failed', err);
-          setError(t('analytics.error'));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-    loadData();
-    return () => controller.abort();
-  }, []);
+  const { data, loading, error } = useAnalyticsQuery<StudentGroupEntry[]>({
+    endpoint: '/api/admin/analytics/groups',
+    dataKey: 'groups',
+  });
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-8">{error}</div>;
 
-  const totalStudents = data.reduce((sum, g) => sum + g.student_count, 0);
-  if (totalStudents === 0) return <EmptyState />;
+  const totalStudents = data?.reduce((sum, g) => sum + g.student_count, 0) ?? 0;
+  if (!data || totalStudents === 0) return <EmptyState />;
 
   return (
     <Card>

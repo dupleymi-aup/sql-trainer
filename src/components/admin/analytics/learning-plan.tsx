@@ -9,9 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, XCircle, Target, Calendar, BookOpen, Search } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { getTasksByDifficulty } from '@/lib/training-tasks';
 
 export default function LearningPlan() {
   const [userId, setUserId] = useState('');
+  const beginnerTotal = getTasksByDifficulty('beginner').length;
+  const intermediateTotal = getTasksByDifficulty('intermediate').length;
+  const advancedTotal = getTasksByDifficulty('advanced').length;
   const [plan, setPlan] = useState<{
     student_name: string;
     current_level: string;
@@ -111,18 +115,22 @@ export default function LearningPlan() {
                   <div className="text-sm text-muted-foreground">{t('analytics.learningPlan.remaining')}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{plan.completed_by_difficulty.beginner}/8</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {plan.completed_by_difficulty.beginner}/{beginnerTotal}
+                  </div>
                   <div className="text-sm text-muted-foreground">{t('analytics.learningPlan.beginner')}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-amber-600">
-                    {plan.completed_by_difficulty.intermediate}/15
+                    {plan.completed_by_difficulty.intermediate}/{intermediateTotal}
                   </div>
                   <div className="text-sm text-muted-foreground">{t('analytics.learningPlan.intermediate')}</div>
                 </div>
               </div>
               <div className="mt-4 text-center">
-                <div className="text-2xl font-bold text-red-600">{plan.completed_by_difficulty.advanced}/25</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {plan.completed_by_difficulty.advanced}/{advancedTotal}
+                </div>
                 <div className="text-sm text-muted-foreground">{t('analytics.learningPlan.advanced')}</div>
               </div>
             </CardContent>

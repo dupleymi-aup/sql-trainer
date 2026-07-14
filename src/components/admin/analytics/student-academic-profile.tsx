@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +18,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface AcademicSummary {
@@ -71,29 +71,11 @@ interface StudentAcademicProfileProps {
 }
 
 export default function StudentAcademicProfile({ studentId, open, onOpenChange }: StudentAcademicProfileProps) {
-  const [data, setData] = useState<AcademicSummary | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!open || !studentId) return;
-    const controller = new AbortController();
-    setLoading(true);
-    setError('');
-    setData(null);
-    fetch(`/api/admin/analytics/student/${studentId}/academic-summary`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch student academic profile'))))
-      .then((d) => {
-        if (!controller.signal.aborted) setData(d.academicSummary);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [studentId, open]);
+  const { data, loading, error } = useAnalyticsQuery<AcademicSummary>({
+    endpoint: `/api/admin/analytics/student/${studentId}/academic-summary`,
+    dataKey: 'academicSummary',
+    enabled: open && !!studentId,
+  });
 
   if (!studentId) return null;
 

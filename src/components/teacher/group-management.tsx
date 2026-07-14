@@ -89,44 +89,53 @@ export default function GroupManagement({ groupId }: GroupManagementProps) {
   const [newGroupDescription, setNewGroupDescription] = useState('');
   const [studentEmails, setStudentEmails] = useState('');
 
-  const fetchGroups = useCallback(async () => {
-    try {
-      const res = await fetch('/api/teacher/groups');
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.success) {
-        setGroups(data.groups || []);
-        if (groupId && !selectedGroupRef.current) {
-          const group = data.groups.find((g: Group) => g.id === groupId);
-          if (group) setSelectedGroup(group);
+  const fetchGroups = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const res = await fetch('/api/teacher/groups', { signal });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success) {
+          setGroups(data.groups || []);
+          if (groupId && !selectedGroupRef.current) {
+            const group = data.groups.find((g: Group) => g.id === groupId);
+            if (group) setSelectedGroup(group);
+          }
         }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        logger.error('Failed to fetch groups:', error);
       }
-    } catch (error) {
-      logger.error('Failed to fetch groups:', error);
-    }
-  }, [groupId]);
+    },
+    [groupId],
+  );
 
-  const fetchStudents = useCallback(async (groupIdParam?: string) => {
+  const fetchStudents = useCallback(async (groupIdParam?: string, signal?: AbortSignal) => {
     if (!groupIdParam) return;
     try {
-      const res = await fetch(`/api/teacher/groups/${groupIdParam}/members`);
+      const res = await fetch(`/api/teacher/groups/${groupIdParam}/members`, { signal });
       if (!res.ok) return;
       const data = await res.json();
       if (data.success) {
         setStudents(data.students || []);
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       logger.error('Failed to fetch students:', error);
     }
   }, []);
 
   useEffect(() => {
-    fetchGroups();
+    const controller = new AbortController();
+    fetchGroups(controller.signal);
+    return () => controller.abort();
   }, [fetchGroups]);
 
   useEffect(() => {
     if (selectedGroup) {
-      fetchStudents(selectedGroup.id);
+      const controller = new AbortController();
+      fetchStudents(selectedGroup.id, controller.signal);
+      return () => controller.abort();
     }
   }, [selectedGroup, fetchStudents]);
 

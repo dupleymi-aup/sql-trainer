@@ -1,67 +1,57 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Lightbulb, Users } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function HintUsageAnalytics() {
-  const [totalHints, setTotalHints] = useState(0);
-  const [uniqueStudents, setUniqueStudents] = useState(0);
-  const [perTask, setPerTask] = useState<
-    Array<{
+  interface HintUsageResponse {
+    total_hints_revealed: number;
+    unique_students_used_hints: number;
+    per_task: Array<{
       task_id: string;
       task_title: string;
       hint_count: number;
       unique_students: number;
       avg_attempts: number;
       completion_rate: number;
-    }>
-  >([]);
-  const [hintReliance, setHintReliance] = useState<
-    Array<{
+    }>;
+    hint_reliance: Array<{
       user_id: string;
       user_name: string;
       hints_used: number;
       tasks_completed: number;
       hints_per_task: number;
       reliance_level: string;
-    }>
-  >([]);
-  const [correlation, setCorrelation] = useState<{
-    with_hints_avg_attempts: number;
-    without_hints_avg_attempts: number;
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+    }>;
+    hint_completion_correlation: {
+      with_hints_avg_attempts: number;
+      without_hints_avg_attempts: number;
+    } | null;
+  }
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
+  const { data, loading, error } = useAnalyticsQuery<HintUsageResponse>({
+    endpoint: '/api/admin/analytics/hint-usage',
+    transform: (json) => ({
+      total_hints_revealed: (json.total_hints_revealed as number) || 0,
+      unique_students_used_hints: (json.unique_students_used_hints as number) || 0,
+      per_task: (json.per_task as HintUsageResponse['per_task']) || [],
+      hint_reliance: (json.hint_reliance as HintUsageResponse['hint_reliance']) || [],
+      hint_completion_correlation:
+        (json.hint_completion_correlation as HintUsageResponse['hint_completion_correlation']) ?? null,
+    }),
+  });
 
-    fetch(`/api/admin/analytics/hint-usage?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch hint usage analytics'))))
-      .then((data) => {
-        setTotalHints(data.total_hints_revealed || 0);
-        setUniqueStudents(data.unique_students_used_hints || 0);
-        setPerTask(data.per_task || []);
-        setHintReliance(data.hint_reliance || []);
-        setCorrelation(data.hint_completion_correlation);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const totalHints = data?.total_hints_revealed ?? 0;
+  const uniqueStudents = data?.unique_students_used_hints ?? 0;
+  const perTask = data?.per_task ?? [];
+  const hintReliance = data?.hint_reliance ?? [];
+  const correlation = data?.hint_completion_correlation ?? null;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

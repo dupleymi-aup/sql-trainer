@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface HeatmapData {
@@ -36,34 +34,19 @@ export default function ActivityHeatmap() {
     t('analytics.heatmap.day6'),
     t('analytics.heatmap.day7'),
   ];
-  const [data, setData] = useState<HeatmapData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [totalCompletions, setTotalCompletions] = useState(0);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/activity-heatmap?${params}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((res) => {
-        setData(res.data || []);
-        setTotalCompletions(res.total || 0);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          logger.error('Activity heatmap fetch failed', err);
-          setError(t('analytics.error'));
-          setLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const {
+    data: heatmapResult,
+    loading,
+    error,
+  } = useAnalyticsQuery<{ heatmap: HeatmapData[]; totalCompletions: number }>({
+    endpoint: '/api/admin/analytics/activity-heatmap',
+    transform: (json) => ({
+      heatmap: (json.data as HeatmapData[]) || [],
+      totalCompletions: (json.total as number) || 0,
+    }),
+  });
+  const data = heatmapResult?.heatmap ?? [];
+  const totalCompletions = heatmapResult?.totalCompletions ?? 0;
 
   if (loading) {
     return (
@@ -94,7 +77,7 @@ export default function ActivityHeatmap() {
     );
   }
 
-  if (data.length === 0) {
+  if (!data?.length) {
     return (
       <Card>
         <CardHeader>

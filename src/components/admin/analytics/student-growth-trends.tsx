@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface GrowthEntry {
@@ -21,29 +20,10 @@ interface StudentGrowthTrendsProps {
 }
 
 export default function StudentGrowthTrends({ apiEndpoint = '/api/admin/analytics/growth' }: StudentGrowthTrendsProps) {
-  const [data, setData] = useState<GrowthEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`${apiEndpoint}?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json();
-      })
-      .then((d) => setData(d.growth))
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [apiEndpoint, startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<GrowthEntry[]>({
+    endpoint: apiEndpoint,
+    dataKey: 'growth',
+  });
 
   if (loading) return <p className="text-center py-4 text-muted-foreground">{t('analytics.loading')}</p>;
   if (error)
@@ -53,7 +33,7 @@ export default function StudentGrowthTrends({ apiEndpoint = '/api/admin/analytic
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
-  if (!data.length) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const activeSum = data.reduce((s, d) => s + d.active_users, 0);
   const avgActive = Math.round(activeSum / data.length);

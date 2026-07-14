@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, ArrowUp, ArrowDown, Minus, Loader2 } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface WeekData {
@@ -33,32 +31,10 @@ function ChangeIndicator({ value, inverted }: { value: number; inverted?: boolea
 }
 
 export default function WeekOverWeekComparison() {
-  const [data, setData] = useState<WeekData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/week-comparison?${params}`, { signal: controller.signal })
-      .then((res) => res.json())
-      .then((res) => {
-        setData(res.data || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          logger.error('Week comparison fetch failed', err);
-          setError(t('analytics.error'));
-          setLoading(false);
-        }
-      });
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<WeekData[]>({
+    endpoint: '/api/admin/analytics/week-comparison',
+    dataKey: 'data',
+  });
 
   if (loading) {
     return (
@@ -89,7 +65,7 @@ export default function WeekOverWeekComparison() {
     );
   }
 
-  if (data.length === 0) {
+  if (!data?.length) {
     return (
       <Card>
         <CardHeader>

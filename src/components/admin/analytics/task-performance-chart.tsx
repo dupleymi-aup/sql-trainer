@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { t } from '@/lib/i18n';
-import { logger } from '@/lib/logger';
 import EmptyState from './empty-state';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
 
@@ -25,39 +24,15 @@ interface TaskPerformanceEntry {
 }
 
 export default function TaskPerformanceChart() {
-  const [data, setData] = useState<TaskPerformanceEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error } = useAnalyticsQuery<TaskPerformanceEntry[]>({
+    endpoint: '/api/admin/analytics/task-performance',
+    dataKey: 'tasks',
+  });
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (startDate) params.set('startDate', String(startDate));
-        if (endDate) params.set('endDate', String(endDate));
-        const res = await fetch(`/api/admin/analytics/task-performance?${params}`, { signal: controller.signal });
-        if (!res.ok) throw new Error('Failed to load');
-        const json = await res.json();
-        setData(json.tasks || []);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        logger.error('Task performance fetch failed', err);
-        setError(t('analytics.error'));
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
-    return () => controller.abort();
-  }, [startDate, endDate]);
 
   if (loading) return <div className="flex justify-center py-8">{t('analytics.loading')}</div>;
   if (error) return <div className="text-red-500 py-8">{error}</div>;
-  if (data.length === 0) return <EmptyState />;
+  if (!data?.length) return <EmptyState />;
 
   const filtered = filterDifficulty === 'all' ? data : data.filter((d) => d.difficulty === filterDifficulty);
 

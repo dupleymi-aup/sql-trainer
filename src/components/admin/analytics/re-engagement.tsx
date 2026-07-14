@@ -1,58 +1,47 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, RotateCcw, Users, Clock } from 'lucide-react';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+interface ReEngagementData {
+  re_engaged_students: Array<{
+    user_id: string;
+    name: string;
+    email: string;
+    last_gap_days: number;
+    re_engaged_at: number;
+    tasks_before_gap: number;
+    tasks_after_gap: number;
+  }>;
+  bring_back_tasks: Array<{ task_id: string; task_title: string; re_engagement_count: number }>;
+  re_engagement_rate: number;
+  avg_gap_days: number;
+  total_re_engaged: number;
+}
+
 export default function ReEngagement() {
-  const [reEngagedStudents, setReEngagedStudents] = useState<
-    Array<{
-      user_id: string;
-      name: string;
-      email: string;
-      last_gap_days: number;
-      re_engaged_at: number;
-      tasks_before_gap: number;
-      tasks_after_gap: number;
-    }>
-  >([]);
-  const [bringBackTasks, setBringBackTasks] = useState<
-    Array<{ task_id: string; task_title: string; re_engagement_count: number }>
-  >([]);
-  const [rate, setRate] = useState(0);
-  const [avgGap, setAvgGap] = useState(0);
-  const [totalReEngaged, setTotalReEngaged] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
+  const { data, loading, error } = useAnalyticsQuery<ReEngagementData>({
+    endpoint: '/api/admin/analytics/re-engagement',
+    transform: (json) => ({
+      re_engaged_students: (json.re_engaged_students ?? []) as ReEngagementData['re_engaged_students'],
+      bring_back_tasks: (json.bring_back_tasks ?? []) as ReEngagementData['bring_back_tasks'],
+      re_engagement_rate: Number(json.re_engagement_rate) || 0,
+      avg_gap_days: Number(json.avg_gap_days) || 0,
+      total_re_engaged: Number(json.total_re_engaged) || 0,
+    }),
+  });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/re-engagement?${params}`, { signal: controller.signal })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Failed to fetch re-engagement data'))))
-      .then((data) => {
-        setReEngagedStudents(data.re_engaged_students || []);
-        setBringBackTasks(data.bring_back_tasks || []);
-        setRate(data.re_engagement_rate || 0);
-        setAvgGap(data.avg_gap_days || 0);
-        setTotalReEngaged(data.total_re_engaged || 0);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const reEngagedStudents = data?.re_engaged_students ?? [];
+  const bringBackTasks = data?.bring_back_tasks ?? [];
+  const rate = data?.re_engagement_rate ?? 0;
+  const avgGap = data?.avg_gap_days ?? 0;
+  const totalReEngaged = data?.total_re_engaged ?? 0;
 
   if (loading) return <p className="text-center py-4">{t('analytics.loading')}</p>;
   if (error)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell } from 'recharts';
 import { TRAINING_TASKS, DIFFICULTY_LABELS, type Difficulty } from '@/lib/training-tasks';
 import { t } from '@/lib/i18n';
-import { useDateRange } from '../analytics-dashboard';
+import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
 interface TaskAnalyticsEntry {
@@ -28,32 +28,13 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 };
 
 export default function TaskAnalyticsChart() {
-  const [data, setData] = useState<TaskAnalyticsEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const { startDate, endDate } = useDateRange();
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const params = new URLSearchParams();
-    if (startDate) params.set('startDate', String(startDate));
-    if (endDate) params.set('endDate', String(endDate));
-
-    fetch(`/api/admin/analytics/tasks?${params}`, { signal: controller.signal })
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load');
-        return r.json();
-      })
-      .then((data) => setData(data.tasks))
-      .catch((err) => {
-        if (err.name !== 'AbortError') setError(t('analytics.error'));
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
-  }, [startDate, endDate]);
+  const { data, loading, error } = useAnalyticsQuery<TaskAnalyticsEntry[]>({
+    endpoint: '/api/admin/analytics/tasks',
+    dataKey: 'tasks',
+  });
 
   const enrichedData = useMemo(() => {
-    return data.map((task) => {
+    return (data ?? []).map((task) => {
       const trainingTask = TRAINING_TASKS.find((t) => t.id === task.task_id);
       return {
         ...task,
