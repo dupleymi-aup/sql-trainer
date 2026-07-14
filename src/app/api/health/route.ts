@@ -112,7 +112,7 @@ export const GET = withTiming(async () => {
           .get() as { count: number } | undefined;
         status.database.tableCount = tables?.count ?? 0;
       } catch (tableErr) {
-        logger.debug('Health check: table count query failed', { error: String(tableErr) });
+        logger.warn('Health check: table count query failed', { error: String(tableErr) });
       }
     } else {
       status.database.status = 'error';
@@ -130,7 +130,7 @@ export const GET = withTiming(async () => {
     status.redis = limiter.isHealthy() ? 'connected' : 'disconnected';
   } catch (redisErr) {
     status.redis = 'not_configured';
-    logger.debug('Health check: Redis not available', { error: String(redisErr) });
+    logger.warn('Health check: Redis not available', { error: String(redisErr) });
   }
 
   // DB pool metrics

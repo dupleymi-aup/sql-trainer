@@ -418,8 +418,8 @@ function verifyMongoDb(userQuery: string, task: ReturnType<typeof getTaskById>):
   }
 
   // Simple row comparison
-  const userJson = JSON.stringify(userResult.rows.sort());
-  const expectedJson = JSON.stringify(solutionResult.rows.sort());
+  const userJson = JSON.stringify([...userResult.rows].sort());
+  const expectedJson = JSON.stringify([...solutionResult.rows].sort());
 
   if (userJson === expectedJson) {
     return NextResponse.json({

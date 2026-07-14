@@ -35,7 +35,7 @@ export interface RateLimiter {
  * https://cloud.google.com/architecture/rate-limiting-strategies-techniques
  */
 export class RedisRateLimiter implements RateLimiter {
-  private redis: ReturnType<typeof createRedisClient> | null = null;
+  private redis: Redis | null = null;
   private isConnected = false;
   private connectPromise: Promise<void> | null = null;
 
@@ -48,7 +48,7 @@ export class RedisRateLimiter implements RateLimiter {
 
     this.connectPromise = (async () => {
       try {
-        const redisClient = createRedisClient(redisUrl);
+        const redisClient = await createRedisClient(redisUrl);
         if (!redisClient) {
           this.isConnected = false;
           return;
@@ -305,13 +305,14 @@ export function resetGlobalRateLimiter(): void {
 }
 
 // Helper function to create Redis client (lazy-loaded, optional dependency)
-// The module name is constructed dynamically to prevent bundlers from
-// trying to resolve it at build time when ioredis is not installed.
-// Returns null if no redisUrl is provided — prevents accidental connections.
-function createRedisClient(redisUrl?: string): Redis | null {
+async function createRedisClient(redisUrl?: string): Promise<Redis | null> {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Redis = require(/* turbopackIgnore: true */ 'io' + 'redis');
+    // Dynamic import to avoid bundling ioredis when not installed
+    const { default: Redis } = await import('ioredis').catch(() => null);
+    if (!Redis) {
+      logger.warn('ioredis is not installed — distributed rate limiting will use in-memory fallback');
+      return null;
+    }
     // Only create client if explicit URL is provided (no fallback to localhost)
     if (!redisUrl) {
       return null;
