@@ -335,8 +335,10 @@ export default function TaskPanel({
                   size="sm"
                   className="flex-1 h-9 text-xs hover:bg-muted/70 transition-all"
                   onClick={() => {
-                    navigator.clipboard.writeText(task.sampleSolution);
-                    toast.success(t('task.solutionCopied', { default: 'Solution copied to clipboard' }));
+                    navigator.clipboard.writeText(task.sampleSolution).then(
+                      () => toast.success(t('task.solutionCopied', { default: 'Solution copied to clipboard' })),
+                      () => {},
+                    );
                   }}
                 >
                   <Copy className="mr-2 h-4 w-4" />

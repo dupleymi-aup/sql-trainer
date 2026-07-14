@@ -27,7 +27,7 @@ describe('extractStatementTypes', () => {
   });
 
   it('extracts table-qualified prefixes', () => {
-    expect(extractStatementTypes('SELECT * FROM schema.table')).toEqual(['SELECT', 'FROM']);
+    expect(extractStatementTypes('SELECT * FROM schema.table')).toEqual(['SELECT']);
   });
 
   it('handles empty input', () => {

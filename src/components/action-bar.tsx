@@ -217,7 +217,7 @@ export default function ActionBar({
               className="h-8 text-xs sm:text-sm hover:bg-muted/70 transition-all"
               disabled={!editorContent.trim()}
               onClick={() => {
-                navigator.clipboard.writeText(editorContent);
+                navigator.clipboard.writeText(editorContent).catch(() => {});
               }}
             >
               <ClipboardCopy className="h-3.5 w-3.5" />

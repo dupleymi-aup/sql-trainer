@@ -182,7 +182,7 @@ export default function HomePage() {
       return;
     }
 
-    let cancelled = false;
+    const controller = new AbortController();
 
     const loadSchema = async () => {
       attemptCountRef.current = 0;
@@ -193,20 +193,20 @@ export default function HomePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ taskId: currentTask.id, dbType }),
+          signal: controller.signal,
         });
         const data = await res.json();
-        if (!cancelled && data.success && data.schema) {
+        if (!controller.signal.aborted && data.success && data.schema) {
           setSchemaInfo(data.schema);
         }
       } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') return;
         logger.error('Failed to initialize training schema', e);
       }
     };
 
     loadSchema();
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- attemptCountRef is a mutable ref, not reactive
   }, [currentTask, dbType]);
 
