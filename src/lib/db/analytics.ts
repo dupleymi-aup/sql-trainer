@@ -856,6 +856,8 @@ export function getDifficultyComparison(filters?: TimeRangeFilters): DifficultyC
     count: number;
   };
 
+  const timeEstimates = getTimeToCompleteEstimates();
+
   return difficulties.map((difficulty) => {
     let dateCondition = '';
     const dateParams: unknown[] = [`${difficulty}-%`];
@@ -887,7 +889,6 @@ export function getDifficultyComparison(filters?: TimeRangeFilters): DifficultyC
       first_attempt_rate: number;
     };
 
-    const timeEstimates = getTimeToCompleteEstimates();
     const difficultyTime = timeEstimates
       .filter((t) => t.difficulty === difficulty)
       .reduce((sum, t) => sum + t.estimated_time_minutes, 0);
@@ -3122,19 +3123,6 @@ export function markScheduleFailed(id: string, error: string): void {
     UPDATE reminder_schedule SET status = 'failed', error = ? WHERE id = ?
   `,
   ).run(error, id);
-}
-
-/**
- * Returns the creator (teacher) of a deadline.
- */
-export function getTeachersForDeadline(deadlineId: string): { id: string; email: string; name: string }[] {
-  const db = getDb();
-  const deadline = getDeadlineById(deadlineId);
-  if (!deadline) return [];
-
-  const teacher = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(deadline.creator_id) as
-    { id: string; email: string; name: string } | undefined;
-  return teacher ? [teacher] : [];
 }
 
 /**
