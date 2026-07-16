@@ -5,8 +5,81 @@ import { logAudit } from './users';
 import { TRAINING_TASKS } from '../training-tasks';
 import { logger } from '../logger';
 import { toTitleCase } from '../string-utils';
-import { getDBStats, getStudentProgressById } from '../db-users';
 // ==================== Analytics ====================
+
+// Database stats for admin
+export interface DBStats {
+  totalUsers: number;
+  studentsCount: number;
+  teachersCount: number;
+  adminsCount: number;
+  totalCompletions: number;
+  achievementsAwarded: number;
+  dbSizeBytes: number;
+}
+
+export function getDBStats(): DBStats {
+  const db = getDb();
+  const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+  const studentsCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
+    count: number;
+  };
+  const teachersCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'teacher'").get() as {
+    count: number;
+  };
+  const adminsCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get() as { count: number };
+  const totalCompletions = db.prepare('SELECT COUNT(*) as count FROM user_progress').get() as { count: number };
+  const achievementsAwarded = db.prepare('SELECT COUNT(*) as count FROM user_achievements').get() as { count: number };
+
+  let dbSizeBytes = 0;
+  try {
+    dbSizeBytes = fs.statSync(DB_PATH()).size;
+  } catch {
+    logger.debug('Database file does not exist yet, size is 0');
+  }
+
+  return {
+    totalUsers: totalUsers.count,
+    studentsCount: studentsCount.count,
+    teachersCount: teachersCount.count,
+    adminsCount: adminsCount.count,
+    totalCompletions: totalCompletions.count,
+    achievementsAwarded: achievementsAwarded.count,
+    dbSizeBytes,
+  };
+}
+
+export function getStudentProgressById(userId: string): {
+  completion_rate: number;
+  last_active: number | null;
+  tasks_completed: number;
+  avg_attempts: number;
+} | null {
+  const db = getDb();
+  const totalTasks = TRAINING_TASKS.length;
+  const row = db
+    .prepare(
+      `
+    SELECT
+      COUNT(up.task_id) as tasks_completed,
+      COALESCE(ROUND(AVG(up.attempts * 1.0), 2), 0) as avg_attempts,
+      MAX(up.completed_at) as last_active
+    FROM users u
+    LEFT JOIN user_progress up ON u.id = up.user_id
+    WHERE u.id = ?
+    GROUP BY u.id
+  `,
+    )
+    .get(userId) as { tasks_completed: number; avg_attempts: number; last_active: number | null } | undefined;
+
+  if (!row) return null;
+  return {
+    tasks_completed: row.tasks_completed,
+    avg_attempts: row.avg_attempts,
+    last_active: row.last_active,
+    completion_rate: Math.round((row.tasks_completed / totalTasks) * 1000) / 10,
+  };
+}
 
 export interface TaskAnalyticsEntry {
   task_id: string;
@@ -2791,8 +2864,7 @@ export const DEFAULT_INTERVALS = JSON.stringify([86400000, 3600000]); // 24h, 1h
 export function getNotificationPreferences(userId: string): NotificationPreferences {
   const db = getDb();
   const prefs = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ?').get(userId) as
-    | NotificationPreferences
-    | undefined;
+    NotificationPreferences | undefined;
   if (prefs) return prefs;
 
   // Create defaults
@@ -2822,8 +2894,7 @@ export function updateNotificationPreferences(
 ): void {
   const db = getDb();
   const existing = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ?').get(userId) as
-    | NotificationPreferences
-    | undefined;
+    NotificationPreferences | undefined;
 
   const channels = prefs.channels_enabled || (existing ? JSON.parse(existing.channels_enabled) : ['in_app']);
   const intervals =
@@ -3023,8 +3094,7 @@ export function getTeachersForDeadline(deadlineId: string): { id: string; email:
   if (!deadline) return [];
 
   const teacher = db.prepare('SELECT id, email, name FROM users WHERE id = ?').get(deadline.creator_id) as
-    | { id: string; email: string; name: string }
-    | undefined;
+    { id: string; email: string; name: string } | undefined;
   return teacher ? [teacher] : [];
 }
 
@@ -6712,8 +6782,7 @@ export function generateLearningPlan(userId: string): {
 } | null {
   const db = getDb();
   const user = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(userId) as
-    | { id: string; name: string; role: string }
-    | undefined;
+    { id: string; name: string; role: string } | undefined;
   if (!user) return null;
 
   const progress = getStudentProgressById(userId);
@@ -8010,8 +8079,7 @@ export function getAcademicTimeline(userId: string): TimelineEvent[] {
 
   // Registration
   const user = db.prepare('SELECT created_at, name FROM users WHERE id = ?').get(userId) as
-    | { created_at: number; name: string }
-    | undefined;
+    { created_at: number; name: string } | undefined;
 
   if (user) {
     events.push({

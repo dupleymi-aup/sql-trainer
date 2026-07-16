@@ -3,10 +3,8 @@
  * Re-exports from focused modules under ./db/.
  * Remaining student recommendation and skill-gap functions stay here.
  */
-import fs from 'fs';
-import { getDb, DB_PATH } from './db/connection';
+import { getDb } from './db/connection';
 import { TRAINING_TASKS } from './training-tasks';
-import { logger } from './logger';
 import { t } from './i18n';
 
 export { getDb, DB_PATH } from './db/connection';
@@ -86,43 +84,10 @@ export function getTeacherStudentProgress(): StudentProgress[] {
     .all() as StudentProgress[];
 }
 
-export function getStudentProgressById(userId: string): {
-  completion_rate: number;
-  last_active: number | null;
-  tasks_completed: number;
-  avg_attempts: number;
-} | null {
-  const db = getDb();
-  const totalTasks = TRAINING_TASKS.length;
-  const row = db
-    .prepare(
-      `
-    SELECT
-      COUNT(up.task_id) as tasks_completed,
-      COALESCE(ROUND(AVG(up.attempts * 1.0), 2), 0) as avg_attempts,
-      MAX(up.completed_at) as last_active
-    FROM users u
-    LEFT JOIN user_progress up ON u.id = up.user_id
-    WHERE u.id = ?
-    GROUP BY u.id
-  `,
-    )
-    .get(userId) as { tasks_completed: number; avg_attempts: number; last_active: number | null } | undefined;
-
-  if (!row) return null;
-  return {
-    tasks_completed: row.tasks_completed,
-    avg_attempts: row.avg_attempts,
-    last_active: row.last_active,
-    completion_rate: Math.round((row.tasks_completed / totalTasks) * 1000) / 10,
-  };
-}
-
 export function getStudentStreak(userId: string): number {
   const db = getDb();
   const user = db.prepare('SELECT streak_current FROM users WHERE id = ?').get(userId) as
-    | { streak_current: number | null }
-    | undefined;
+    { streak_current: number | null } | undefined;
   return user?.streak_current || 0;
 }
 
@@ -142,8 +107,7 @@ export function getStudentRecommendations(userId: string): StudentRecommendation
   const recommendations: StudentRecommendation[] = [];
 
   const user = db.prepare('SELECT name, streak_current, streak_longest FROM users WHERE id = ?').get(userId) as
-    | { name: string; streak_current: number; streak_longest: number }
-    | undefined;
+    { name: string; streak_current: number; streak_longest: number } | undefined;
 
   if (!user) return recommendations;
 
@@ -330,49 +294,6 @@ export function getStudentSkillGap(userId: string): SkillGap[] {
   }
 
   return result.sort((a, b) => a.completion_pct - b.completion_pct);
-}
-
-// Database stats for admin
-export interface DBStats {
-  totalUsers: number;
-  studentsCount: number;
-  teachersCount: number;
-  adminsCount: number;
-  totalCompletions: number;
-  achievementsAwarded: number;
-  dbSizeBytes: number;
-}
-
-export function getDBStats(): DBStats {
-  const db = getDb();
-  const totalUsers = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-  const studentsCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
-    count: number;
-  };
-  const teachersCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'teacher'").get() as {
-    count: number;
-  };
-  const adminsCount = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").get() as { count: number };
-  const totalCompletions = db.prepare('SELECT COUNT(*) as count FROM user_progress').get() as { count: number };
-  const achievementsAwarded = db.prepare('SELECT COUNT(*) as count FROM user_achievements').get() as { count: number };
-
-  let dbSizeBytes = 0;
-  try {
-    dbSizeBytes = fs.statSync(DB_PATH()).size;
-  } catch {
-    // File doesn't exist yet
-    logger.debug('Database file does not exist yet, size is 0');
-  }
-
-  return {
-    totalUsers: totalUsers.count,
-    studentsCount: studentsCount.count,
-    teachersCount: teachersCount.count,
-    adminsCount: adminsCount.count,
-    totalCompletions: totalCompletions.count,
-    achievementsAwarded: achievementsAwarded.count,
-    dbSizeBytes,
-  };
 }
 
 export * from './db/analytics';
