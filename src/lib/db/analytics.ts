@@ -3471,62 +3471,69 @@ export interface GrowthTrendEntry {
 export function getStudentGrowthTrends(weeks: number = 12, filters?: TimeRangeFilters): GrowthTrendEntry[] {
   const db = getDb();
   const now = Date.now();
-  const result: GrowthTrendEntry[] = [];
+  const oldestWeekStart = now - (weeks - 1) * 7 * 24 * 60 * 60 * 1000;
 
+  let userDateCondition = '';
+  const userDateParams: unknown[] = [oldestWeekStart];
+  if (filters?.start_date) {
+    userDateCondition += ' AND created_at >= ?';
+    userDateParams.push(filters.start_date);
+  }
+  if (filters?.end_date) {
+    userDateCondition += ' AND created_at <= ?';
+    userDateParams.push(filters.end_date);
+  }
+
+  // Batch query: new users per week (avoids N+1)
+  const newUsersByWeek = db
+    .prepare(
+      `
+    SELECT strftime('%Y-%W', datetime(created_at / 1000, 'unixepoch')) as week_key,
+           COUNT(*) as c
+    FROM users
+    WHERE created_at >= ?${userDateCondition}
+    GROUP BY week_key
+  `,
+    )
+    .all(...userDateParams) as { week_key: string; c: number }[];
+
+  const newUsersMap = new Map(newUsersByWeek.map((r) => [r.week_key, r.c]));
+
+  let progressDateCondition = '';
+  const progressDateParams: unknown[] = [oldestWeekStart];
+  if (filters?.start_date) {
+    progressDateCondition += ' AND completed_at >= ?';
+    progressDateParams.push(filters.start_date);
+  }
+  if (filters?.end_date) {
+    progressDateCondition += ' AND completed_at <= ?';
+    progressDateParams.push(filters.end_date);
+  }
+
+  // Batch query: active users per week (avoids N+1)
+  const activeUsersByWeek = db
+    .prepare(
+      `
+    SELECT strftime('%Y-%W', datetime(completed_at / 1000, 'unixepoch')) as week_key,
+           COUNT(DISTINCT user_id) as c
+    FROM user_progress
+    WHERE completed_at >= ?${progressDateCondition}
+    GROUP BY week_key
+  `,
+    )
+    .all(...progressDateParams) as { week_key: string; c: number }[];
+
+  const activeUsersMap = new Map(activeUsersByWeek.map((r) => [r.week_key, r.c]));
+
+  // Build result for each week
+  const result: GrowthTrendEntry[] = [];
   for (let i = weeks - 1; i >= 0; i--) {
     const weekEnd = now - i * 7 * 24 * 60 * 60 * 1000;
     const weekStart = weekEnd - 7 * 24 * 60 * 60 * 1000;
-
-    let userDateCondition = '';
-    const userDateParams: unknown[] = [weekStart, weekEnd];
-    if (filters?.start_date) {
-      userDateCondition += ' AND created_at >= ?';
-      userDateParams.push(filters.start_date);
-    }
-    if (filters?.end_date) {
-      userDateCondition += ' AND created_at <= ?';
-      userDateParams.push(filters.end_date);
-    }
-
-    const newUsers = (
-      db
-        .prepare(
-          `
-      SELECT COUNT(*) as c FROM users WHERE created_at >= ? AND created_at < ?${userDateCondition}
-    `,
-        )
-        .get(...userDateParams) as { c: number }
-    ).c;
-
-    let progressDateCondition = '';
-    const progressDateParams: unknown[] = [weekStart, weekEnd];
-    if (filters?.start_date) {
-      progressDateCondition += ' AND completed_at >= ?';
-      progressDateParams.push(filters.start_date);
-    }
-    if (filters?.end_date) {
-      progressDateCondition += ' AND completed_at <= ?';
-      progressDateParams.push(filters.end_date);
-    }
-
-    const activeUsers = (
-      db
-        .prepare(
-          `
-      SELECT COUNT(DISTINCT user_id) as c FROM user_progress WHERE completed_at >= ? AND completed_at < ?${progressDateCondition}
-    `,
-        )
-        .get(...progressDateParams) as { c: number }
-    ).c;
+    const weekKey = new Date(weekStart).toISOString().slice(0, 10).replace(/-/g, '').slice(0, 6);
 
     const totalUsers = (
-      db
-        .prepare(
-          `
-      SELECT COUNT(*) as c FROM users WHERE created_at < ?
-    `,
-        )
-        .get(weekEnd) as { c: number }
+      db.prepare('SELECT COUNT(*) as c FROM users WHERE created_at < ?').get(weekEnd) as { c: number }
     ).c;
 
     const weekDate = new Date(weekStart);
@@ -3536,8 +3543,8 @@ export function getStudentGrowthTrends(weeks: number = 12, filters?: TimeRangeFi
     result.push({
       week_start: new Date(weekStart).toISOString(),
       week_label: `${month} ${day}`,
-      new_users: newUsers,
-      active_users: activeUsers,
+      new_users: newUsersMap.get(weekKey) || 0,
+      active_users: activeUsersMap.get(weekKey) || 0,
       total_users: totalUsers,
     });
   }
@@ -6183,21 +6190,28 @@ export function getActivitySummary(filters?: TimeRangeFilters): ActivitySummaryR
     dateParams.push(filters.end_date);
   }
 
-  // Get daily active users for last 30 days
-  const dailyRows = db
+  // Batch query: all daily active users for last 60 days (covers MAU window)
+  const allDailyRows = db
     .prepare(
       `
     SELECT date(completed_at / 1000, 'unixepoch') as date,
-           COUNT(DISTINCT user_id) as active_users
+           user_id
     FROM user_progress
     WHERE completed_at >= ?${dateCondition}
-    GROUP BY date
-    ORDER BY date
   `,
     )
-    .all(now - 30 * dayMs, ...dateParams) as Array<{ date: string; active_users: number }>;
+    .all(now - 60 * dayMs, ...dateParams) as Array<{ date: string; user_id: string }>;
 
-  const dailyMap = new Map(dailyRows.map((r) => [r.date, r.active_users]));
+  // Build daily user sets for fast WAU/MAU computation
+  const usersByDate = new Map<string, Set<string>>();
+  for (const row of allDailyRows) {
+    let set = usersByDate.get(row.date);
+    if (!set) {
+      set = new Set();
+      usersByDate.set(row.date, set);
+    }
+    set.add(row.user_id);
+  }
 
   const daily: ActivitySummaryEntry[] = [];
   for (let i = 29; i >= 0; i--) {
@@ -6206,43 +6220,31 @@ export function getActivitySummary(filters?: TimeRangeFilters): ActivitySummaryR
     const dateStr = d.toISOString().slice(0, 10);
     const ts = d.getTime();
 
-    // DAU
-    const dau = dailyMap.get(dateStr) || 0;
+    const dau = usersByDate.get(dateStr)?.size || 0;
 
-    // WAU (active in last 7 days from this date)
-    const weekStart = ts - 7 * dayMs;
-    let wau = 0;
+    // WAU: distinct users in last 7 days
+    const wauUsers = new Set<string>();
     for (let j = 6; j >= 0; j--) {
       const checkDate = new Date(ts - j * dayMs);
       const checkStr = checkDate.toISOString().slice(0, 10);
-      wau += dailyMap.get(checkStr) || 0;
+      const dayUsers = usersByDate.get(checkStr);
+      if (dayUsers) {
+        for (const uid of dayUsers) wauUsers.add(uid);
+      }
     }
-    // Actually count distinct users, not sum
-    const wauRows = db
-      .prepare(
-        `
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_progress
-      WHERE completed_at >= ? AND completed_at < ?
-    `,
-      )
-      .get(weekStart, ts + dayMs) as { count: number };
-    wau = wauRows.count;
 
-    // MAU (active in last 30 days from this date)
-    const monthStart = ts - 30 * dayMs;
-    const mauRows = db
-      .prepare(
-        `
-      SELECT COUNT(DISTINCT user_id) as count
-      FROM user_progress
-      WHERE completed_at >= ? AND completed_at < ?
-    `,
-      )
-      .get(monthStart, ts + dayMs) as { count: number };
-    const mau = mauRows.count;
+    // MAU: distinct users in last 30 days
+    const mauUsers = new Set<string>();
+    for (let j = 29; j >= 0; j--) {
+      const checkDate = new Date(ts - j * dayMs);
+      const checkStr = checkDate.toISOString().slice(0, 10);
+      const dayUsers = usersByDate.get(checkStr);
+      if (dayUsers) {
+        for (const uid of dayUsers) mauUsers.add(uid);
+      }
+    }
 
-    daily.push({ date: dateStr, dau, wau, mau });
+    daily.push({ date: dateStr, dau, wau: wauUsers.size, mau: mauUsers.size });
   }
 
   const currentDau = daily.length > 0 ? daily[daily.length - 1].dau : 0;
