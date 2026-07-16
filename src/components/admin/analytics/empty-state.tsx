@@ -1,5 +1,3 @@
-'use client';
-
 import { BarChart3, FileText, Users, AlertCircle } from 'lucide-react';
 import { t } from '@/lib/i18n';
 
