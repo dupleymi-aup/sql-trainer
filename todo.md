@@ -576,12 +576,13 @@
 
 | Показатель | Значение |
 |------------|----------|
-| Тестов | **763/763** в 54 файлах (0 failed, все зелёные) |
+| Тестов | **881/881** в 55 файлах (0 failed, все зелёные) |
 | Покрытие | ~60%+ statements |
 | Лайнт | 0 ошибок, 0 предупреждений |
+| TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-06 (Phase 5 complete, code splitting, dead code removal) |
+| Последнее обновление | 2026-07-16 (error handling hardening, lint fixes, performance monitoring) |
 
 ### Выполненные пункты плана
 
