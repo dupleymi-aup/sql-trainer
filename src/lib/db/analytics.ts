@@ -3271,9 +3271,9 @@ export function getSystemHealth(): SystemHealth {
     db.prepare('SELECT 1').get();
 
     const dbStats = getDBStats();
-    const totalUsers = (db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }).c;
-    const totalProgress = (db.prepare('SELECT COUNT(*) as c FROM user_progress').get() as { c: number }).c;
-    const totalAchievements = (db.prepare('SELECT COUNT(*) as c FROM user_achievements').get() as { c: number }).c;
+    const totalUsers = dbStats.totalUsers;
+    const totalProgress = dbStats.totalCompletions;
+    const totalAchievements = dbStats.achievementsAwarded;
 
     const activeToday = (
       db
@@ -7977,6 +7977,21 @@ export function getAtRiskStudents(limit = 50): AtRiskStudent[] {
   const now30 = now - 30 * 24 * 60 * 60 * 1000;
   const now60 = now - 60 * 24 * 60 * 60 * 1000;
 
+  // Batch query: recent and previous completion counts per student (avoids N+1)
+  const activityCounts = db
+    .prepare(
+      `
+    SELECT user_id,
+      SUM(CASE WHEN completed_at >= ? THEN 1 ELSE 0 END) as recent_count,
+      SUM(CASE WHEN completed_at >= ? AND completed_at < ? THEN 1 ELSE 0 END) as previous_count
+    FROM user_progress
+    GROUP BY user_id
+  `,
+    )
+    .all(now30, now60, now30) as { user_id: string; recent_count: number; previous_count: number }[];
+
+  const activityMap = new Map(activityCounts.map((a) => [a.user_id, a]));
+
   return students
     .map((student) => {
       const completionRate = Math.round((student.tasks_completed / totalTasks) * 100);
@@ -7984,22 +7999,13 @@ export function getAtRiskStudents(limit = 50): AtRiskStudent[] {
         ? Math.round((now - student.last_active) / (24 * 60 * 60 * 1000))
         : 999;
 
-      // Determine trend
-      const recentCompletions = db
-        .prepare('SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed_at >= ?')
-        .get(student.user_id, now30) as { count: number };
-
-      const prevCompletions = db
-        .prepare(
-          'SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed_at >= ? AND completed_at < ?',
-        )
-        .get(student.user_id, now60, now30) as { count: number };
+      const activity = activityMap.get(student.user_id) || { recent_count: 0, previous_count: 0 };
 
       let trend: 'improving' | 'stable' | 'declining' = 'stable';
-      if (prevCompletions.count > 0) {
-        const change = ((recentCompletions.count - prevCompletions.count) / prevCompletions.count) * 100;
+      if (activity.previous_count > 0) {
+        const change = ((activity.recent_count - activity.previous_count) / activity.previous_count) * 100;
         trend = change > 20 ? 'improving' : change < -20 ? 'declining' : 'stable';
-      } else if (recentCompletions.count > 0) {
+      } else if (activity.recent_count > 0) {
         trend = 'improving';
       }
 
@@ -8079,26 +8085,49 @@ export function getSkillGapAnalysis(limit = 30): SkillGapEntry[] {
 
   const results: SkillGapEntry[] = [];
 
+  // Batch query: all completion stats grouped by user_id and task prefix (avoids N+1)
+  const allStats = db
+    .prepare(
+      `
+    SELECT
+      up.user_id,
+      CASE
+        WHEN up.task_id LIKE 'beginner-%' OR up.task_id LIKE 'intermediate-%' OR up.task_id LIKE 'advanced-%' THEN 'company'
+        WHEN up.task_id LIKE 'analytics-%' THEN 'analytics'
+        WHEN up.task_id LIKE 'shop-%' THEN 'shop'
+        WHEN up.task_id LIKE 'exam-%' THEN 'exam'
+        ELSE 'other'
+      END as category,
+      COUNT(DISTINCT up.task_id) as completed,
+      ROUND(AVG(up.attempts * 1.0), 2) as avg_attempts
+    FROM user_progress up
+    JOIN users u ON up.user_id = u.id
+    WHERE u.role = 'student'
+    GROUP BY up.user_id, category
+  `,
+    )
+    .all() as { user_id: string; category: string; completed: number; avg_attempts: number }[];
+
+  // Build lookup: user_id -> category -> stats
+  const statsByUser = new Map<string, Map<string, { completed: number; avg_attempts: number }>>();
+  for (const row of allStats) {
+    let userMap = statsByUser.get(row.user_id);
+    if (!userMap) {
+      userMap = new Map();
+      statsByUser.set(row.user_id, userMap);
+    }
+    userMap.set(row.category, { completed: row.completed, avg_attempts: row.avg_attempts });
+  }
+
   for (const student of students) {
     for (const cat of activeCategories) {
       const taskIds = TRAINING_TASKS.filter((t) => cat.prefixes.some((p) => t.id.startsWith(p))).map((t) => t.id);
       if (!taskIds.length) continue;
 
-      const placeholders = taskIds.map(() => '?').join(',');
-
-      const stats = db
-        .prepare(
-          `
-        SELECT
-          COUNT(DISTINCT up.task_id) as completed,
-          ROUND(AVG(up.attempts * 1.0), 2) as avg_attempts
-        FROM user_progress up
-        WHERE up.user_id = ? AND up.task_id IN (${placeholders})
-      `,
-        )
-        .get(student.user_id, ...taskIds) as { completed: number; avg_attempts: number };
-
-      const completionRate = Math.round((stats.completed / taskIds.length) * 100);
+      const userStats = statsByUser.get(student.user_id)?.get(cat.key);
+      const completed = userStats?.completed || 0;
+      const avgAttempts = userStats?.avg_attempts || 0;
+      const completionRate = Math.round((completed / taskIds.length) * 100);
 
       results.push({
         user_id: student.user_id,
@@ -8106,9 +8135,9 @@ export function getSkillGapAnalysis(limit = 30): SkillGapEntry[] {
         category: cat.key,
         category_label: cat.label,
         total_tasks: taskIds.length,
-        completed_tasks: stats.completed,
+        completed_tasks: completed,
         completion_rate: completionRate,
-        avg_attempts: stats.avg_attempts,
+        avg_attempts: avgAttempts,
         is_weak: completionRate < 50,
       });
     }
