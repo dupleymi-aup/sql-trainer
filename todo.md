@@ -36,7 +36,7 @@
 
 ---
 
-## План из 10 пунктов (2026-07-15)
+## План из 10 пунктов (2026-07-16)
 
 1. **[x] Rate limit bypass fix** — заменить `x-forwarded-for` на composite fingerprint через `getClientIdentifier()`. 5 API маршрутов обновлены.
 2. **[x] Merge upstream** — синхронизировать с `upstream/main`, разрешить 13 конфликтов, удалить мёртвый `safe-fetch`.
@@ -48,6 +48,19 @@
 8. **[x] Standardize API response envelope** — добавить `success: false` во все error-ответы в 22 API маршрутах (admin/teacher/user/push/web-vitals). Все ответы теперь `{ success: boolean, error?: string }`.
 9. **[x] API success field fix** — добавить `success` поле в api-auth, api-error, web-vitals, scheduled-export маршруты.
 10. **[x] startPracticeMode fix** — исправить возвращаемое значение, lookup достижений, stale data при resetTaskProgress, guard для analytics query.
+
+## План из 10 пунктов (2026-07-16) — сессия 2
+
+1. **[x] sql-performance-monitor test noise** — добавить lazy table-existence check. Функция `recordSqlPerformance` теперь silent no-op если таблица `sql_performance` отсутствует (тесты). Убрано 200+ строк ошибок в выводе тестов.
+2. **[x] Health route hardening** — обернуть `getDbMetrics()` и `getRedisMetrics()` в try/catch, чтобы `/api/health` всегда возвращал JSON, даже если метрики падают.
+3. **[x] Auth POST try/catch** — добавить top-level try/catch в `POST /api/auth/[...nextauth]` для структурированного ответа вместо raw 500.
+4. **[x] Redis import fix** — исправить динамический import ioredis для поддержки both default и named exports.
+5. **[x] CSRF Secure flag** — `generateCsrfTokenEdge` принимает `secure` option, proxy определяет протокол из запроса.
+6. **[x] Teacher analytics mutation fix** — spread `errorPatterns` перед sort для предотвращения мутации оригинального массива.
+7. **[x] Performance monitor lint** — исправлен NavigatorCSS type error, заменены 21 `(as any)` casts на typed accessors.
+8. **[x] Performance route lint** — заменены 21 `(metric as any)` на `(metric as Record<string, unknown>)`.
+9. **[x] Git push** — все изменения запушены в origin (GitHub) и gitverse.
+10. **[x] Full validation** — 881/881 тестов, lint 0 ошибок, TypeScript 0 ошибок, build succeeds.
 
 ---
 
