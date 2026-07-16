@@ -1,14 +1,36 @@
-import type { PerformanceData, PerformanceStats } from '@/components/admin/extended-performance-dashboard';
-
 export type ExportFormat = 'csv' | 'json' | 'pdf';
 
-export interface ExportOptions {
-  format: ExportFormat;
-  includeMetrics?: string[];
-  includeCharts?: boolean;
-  dateRange?: {
-    start: Date;
-    end: Date;
+interface PerformanceStats {
+  metricName: string;
+  count: number;
+  avg: number;
+  p50: number;
+  p95: number;
+  p99: number;
+  worst: number;
+  good: number;
+  needsImprovement: number;
+  poor: number;
+}
+
+interface ErrorStat {
+  error_type: string;
+  count: number;
+  message: string;
+  page: string;
+  worst: number;
+}
+
+interface PerformanceData {
+  webVitals: PerformanceStats[];
+  longTasks: unknown[];
+  resources: unknown[];
+  errors: ErrorStat[];
+  trend: unknown[];
+  period: {
+    metric: string;
+    days: number;
+    page: string | null;
   };
 }
 
@@ -88,7 +110,7 @@ export function generateExportFilename(format: ExportFormat) {
   return `${prefix}-${date}`;
 }
 
-export async function exportPerformanceData(data: PerformanceData, options: Partial<ExportOptions> = {}) {
+export async function exportPerformanceData(data: PerformanceData, options: { format?: ExportFormat } = {}) {
   const { format = 'csv' } = options;
 
   let content: string;

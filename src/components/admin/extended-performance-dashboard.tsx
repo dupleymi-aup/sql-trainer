@@ -68,7 +68,7 @@ interface ResourceStat {
   poor: number;
 }
 
-interface ErrorStat {
+export interface ErrorStat {
   error_type: string;
   count: number;
   message: string;
