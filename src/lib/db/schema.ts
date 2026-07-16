@@ -368,6 +368,78 @@ export function initDatabase(): void {
     `);
   }
 
+  // Extended performance monitoring tables
+  const hasLongTasks = tables.some((t) => t.name === 'long_tasks');
+  if (!hasLongTasks) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS long_tasks (
+        id TEXT PRIMARY KEY,
+        metric_name TEXT NOT NULL,
+        value REAL NOT NULL,
+        rating TEXT NOT NULL,
+        delta REAL NOT NULL,
+        page TEXT NOT NULL,
+        device_type TEXT,
+        user_agent TEXT,
+        containers TEXT DEFAULT 'unknown',
+        collected_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_long_tasks_metric ON long_tasks(metric_name);
+      CREATE INDEX IF NOT EXISTS idx_long_tasks_page ON long_tasks(page);
+      CREATE INDEX IF NOT EXISTS idx_long_tasks_collected ON long_tasks(collected_at);
+    `);
+  }
+
+  const hasResourceTiming = tables.some((t) => t.name === 'resource_timing');
+  if (!hasResourceTiming) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS resource_timing (
+        id TEXT PRIMARY KEY,
+        resource_type TEXT NOT NULL,
+        resource_name TEXT NOT NULL,
+        value REAL NOT NULL,
+        rating TEXT NOT NULL,
+        delta REAL NOT NULL,
+        page TEXT NOT NULL,
+        device_type TEXT,
+        user_agent TEXT,
+        count INTEGER DEFAULT 1,
+        total_load_ms REAL DEFAULT 0,
+        total_size_bytes INTEGER DEFAULT 0,
+        avg_connect_ms REAL DEFAULT 0,
+        avg_dns_ms REAL DEFAULT 0,
+        avg_ttfb_ms REAL DEFAULT 0,
+        avg_response_ms REAL DEFAULT 0,
+        collected_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_resource_type ON resource_timing(resource_type);
+      CREATE INDEX IF NOT EXISTS idx_resource_page ON resource_timing(page);
+      CREATE INDEX IF NOT EXISTS idx_resource_collected ON resource_timing(collected_at);
+    `);
+  }
+
+  const hasRuntimeErrors = tables.some((t) => t.name === 'runtime_errors');
+  if (!hasRuntimeErrors) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS runtime_errors (
+        id TEXT PRIMARY KEY,
+        error_type TEXT NOT NULL,
+        message TEXT NOT NULL,
+        stack TEXT,
+        filename TEXT,
+        line INTEGER,
+        column INTEGER,
+        page TEXT NOT NULL,
+        device_type TEXT,
+        user_agent TEXT,
+        collected_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_errors_type ON runtime_errors(error_type);
+      CREATE INDEX IF NOT EXISTS idx_errors_page ON runtime_errors(page);
+      CREATE INDEX IF NOT EXISTS idx_errors_collected ON runtime_errors(collected_at);
+    `);
+  }
+
   try {
     const deadlineColumns = db.pragma('table_info(deadlines)') as { name: string }[];
     if (!deadlineColumns.some((c) => c.name === 'group_id')) {

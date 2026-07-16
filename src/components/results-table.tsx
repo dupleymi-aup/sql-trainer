@@ -98,7 +98,7 @@ export default function ResultsTable({
 
   const paginatedRows = useMemo(() => {
     return sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [sortedRows, currentPage]);
+  }, [sortedRows, currentPage, pageSize]);
 
   const totalPages = Math.ceil(sortedRows.length / pageSize);
 

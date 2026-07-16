@@ -68,7 +68,7 @@ export function observeLongTasks(onMetric: (metric: PerformanceMetric) => void):
             delta: entry.duration,
             id: `lt-${entry.startTime}-${Math.random().toString(36).slice(2, 8)}`,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigationType: (performance as any).navigation?.type > 0 ? 'navigate' : 'navigate',
+            navigationType: (performance as any).navigation?.type ? 'navigate' : 'reload',
             page: window.location.pathname,
             deviceType: getDeviceType(),
             userAgent: navigator.userAgent,
@@ -152,7 +152,7 @@ export function observeResources(onMetric: (metric: PerformanceMetric) => void):
             delta: totalLoad,
             id: `res-${key}-${Math.random().toString(36).slice(2, 8)}`,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigationType: (performance as any).navigation?.type > 0 ? 'navigate' : 'navigate',
+            navigationType: (performance as any).navigation?.type ? 'navigate' : 'reload',
             page: window.location.pathname,
             deviceType: getDeviceType(),
             userAgent: navigator.userAgent,

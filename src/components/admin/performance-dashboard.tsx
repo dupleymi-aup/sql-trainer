@@ -10,6 +10,7 @@ import { AlertTriangle, Activity, Zap, Clock, Database, TrendingUp } from 'lucid
 import { t } from '@/lib/i18n';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { logger } from '@/lib/logger';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 interface WebVitalStats {
   metricName: string;
@@ -125,23 +126,28 @@ export default function PerformanceDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     async function loadData() {
       setLoading(true);
       try {
         // Load Web Vitals data
-        const vitalsRes = await fetch(`/api/web-vitals/analytics?metric=${selectedMetric}&days=${selectedDays}`);
+        const vitalsRes = await fetch(`/api/web-vitals/analytics?metric=${selectedMetric}&days=${selectedDays}`, {
+          signal: abortController.signal,
+        });
         const vitalsJson = await vitalsRes.json();
         if (vitalsJson.success) {
           setWebVitalData(vitalsJson);
         }
 
         // Load SQL performance data
-        const sqlRes = await fetch(`/api/sql-performance?days=${selectedDays}`);
+        const sqlRes = await fetch(`/api/sql-performance?days=${selectedDays}`, { signal: abortController.signal });
         const sqlJson = await sqlRes.json();
         if (sqlJson.success) {
           setSqlPerfData(sqlJson);
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         logger.error('[PerformanceDashboard] Failed to load performance data:', err);
       } finally {
         setLoading(false);
@@ -149,6 +155,7 @@ export default function PerformanceDashboard() {
     }
 
     loadData();
+    return () => abortController.abort();
   }, [selectedMetric, selectedDays]);
 
   if (loading) {
@@ -202,6 +209,69 @@ export default function PerformanceDashboard() {
         </TabsList>
 
         <TabsContent value="webvitals" className="space-y-6">
+          {/* Daily Trend Chart */}
+          {webVitalData?.trend && webVitalData.trend.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                  Daily Trend — {selectedMetric}
+                </CardTitle>
+                <CardDescription>Average {selectedMetric} values over the selected period</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={webVitalData.trend}>
+                    <defs>
+                      <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis
+                      dataKey="date"
+                      className="text-xs"
+                      tickFormatter={(value) => {
+                        try {
+                          return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } catch {
+                          return String(value);
+                        }
+                      }}
+                    />
+                    <YAxis label={{ value: 'ms', angle: -90, position: 'insideLeft' }} className="text-xs" />
+                    <Tooltip
+                      labelFormatter={(label) => {
+                        try {
+                          return new Date(label).toLocaleDateString('en-US', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          });
+                        } catch {
+                          return String(label);
+                        }
+                      }}
+                      formatter={(value: number) => [`${Math.round(value)}ms`, `${selectedMetric} Avg`]}
+                      contentStyle={{ fontSize: '12px' }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="avg"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      fill="url(#colorAvg)"
+                      name={`${selectedMetric} Avg`}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Web Vital Cards */}
           {webVitalData?.stats.map((stat) => {
             const thresholds = getMetricThresholds(stat.metricName);
             const goodPercent = (stat.good / stat.count) * 100;
@@ -313,6 +383,59 @@ export default function PerformanceDashboard() {
         <TabsContent value="sql" className="space-y-6">
           {sqlPerfData && (
             <>
+              {/* Query Performance Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-muted-foreground" />
+                    Query Performance by Type
+                  </CardTitle>
+                  <CardDescription>Average and worst SQL query execution time by type</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={sqlPerfData.byType} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="queryType" className="text-xs" />
+                      <YAxis label={{ value: 'ms', angle: -90, position: 'insideLeft' }} className="text-xs" />
+                      <Tooltip
+                        formatter={(value: number, name: string) => [
+                          `${Math.round(value)}ms`,
+                          name === 'avgTime' ? 'Avg Time' : 'Worst Time',
+                        ]}
+                        contentStyle={{ fontSize: '12px' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="avgTime"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        dot={{ fill: '#10b981' }}
+                        name="Avg Time"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="worstTime"
+                        stroke="#ef4444"
+                        strokeWidth={2}
+                        dot={{ fill: '#ef4444' }}
+                        name="Worst Time"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                  <div className="flex items-center justify-center gap-6 mt-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                      <span>Avg Time</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-red-500" />
+                      <span>Worst Time</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

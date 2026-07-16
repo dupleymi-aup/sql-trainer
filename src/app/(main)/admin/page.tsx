@@ -37,6 +37,10 @@ const LeaderboardTable = dynamic(() => import('@/components/admin/analytics/lead
 
 const AdminAnalytics = dynamic(() => import('@/components/admin/admin-analytics'), { loading: () => loadingSkeleton });
 
+const ExtendedPerformanceDashboard = dynamic(() => import('@/components/admin/extended-performance-dashboard'), {
+  loading: () => loadingSkeleton,
+});
+
 export default function AdminPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -108,6 +112,7 @@ export default function AdminPage() {
             <TabsTrigger value="deadlines">{t('admin.tabs.deadlines')}</TabsTrigger>
             <TabsTrigger value="leaderboard">{t('admin.tabs.leaderboard')}</TabsTrigger>
             <TabsTrigger value="health">{t('admin.tabs.health')}</TabsTrigger>
+            <TabsTrigger value="performance">{t('admin.tabs.performance', { default: 'Performance' })}</TabsTrigger>
             <TabsTrigger value="audit">{t('admin.tabs.audit')}</TabsTrigger>
             <TabsTrigger value="metrics">{t('admin.tabs.metrics', { default: 'Metrics' })}</TabsTrigger>
           </TabsList>
@@ -129,6 +134,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="health" className="space-y-6">
             <SystemHealth />
+          </TabsContent>
+          <TabsContent value="performance" className="space-y-6">
+            <ExtendedPerformanceDashboard />
           </TabsContent>
           <TabsContent value="audit" className="space-y-4">
             <AuditLog />
