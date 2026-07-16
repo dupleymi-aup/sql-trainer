@@ -134,21 +134,30 @@ export const GET = withTiming(async () => {
   }
 
   // DB pool metrics
-  const dbMetrics = getDbMetrics();
-  const redisMetrics = getRedisMetrics();
-  status.database.metrics = {
-    totalQueries: dbMetrics.totalQueries,
-    slowQueries: dbMetrics.slowQueries,
-    totalErrors: dbMetrics.totalErrors,
-    avgQueryTimeMs: dbMetrics.avgQueryTimeMs,
-    p95QueryTimeMs: dbMetrics.p95QueryTimeMs,
-    uptimeSeconds: dbMetrics.uptimeSeconds,
-  };
-  status.redisMetrics = {
-    isConnected: redisMetrics.isConnected,
-    connectionFailures: redisMetrics.connectionFailures,
-    lastError: redisMetrics.lastError,
-  };
+  try {
+    const dbMetrics = getDbMetrics();
+    status.database.metrics = {
+      totalQueries: dbMetrics.totalQueries,
+      slowQueries: dbMetrics.slowQueries,
+      totalErrors: dbMetrics.totalErrors,
+      avgQueryTimeMs: dbMetrics.avgQueryTimeMs,
+      p95QueryTimeMs: dbMetrics.p95QueryTimeMs,
+      uptimeSeconds: dbMetrics.uptimeSeconds,
+    };
+  } catch (metricsErr) {
+    logger.warn('Health check: failed to get DB metrics', { error: String(metricsErr) });
+  }
+
+  try {
+    const redisMetrics = getRedisMetrics();
+    status.redisMetrics = {
+      isConnected: redisMetrics.isConnected,
+      connectionFailures: redisMetrics.connectionFailures,
+      lastError: redisMetrics.lastError,
+    };
+  } catch (redisMetricsErr) {
+    logger.warn('Health check: failed to get Redis metrics', { error: String(redisMetricsErr) });
+  }
 
   status.version = process.env.NEXT_PUBLIC_APP_VERSION || undefined;
 

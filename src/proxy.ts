@@ -93,7 +93,8 @@ export default auth(async (request) => {
   const existingCsrfCookie = getCookieFromHeader(request, CSRF_COOKIE_NAME);
   if (!existingCsrfCookie) {
     try {
-      const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge();
+      const isSecure = request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
+      const { rawToken, setCookieHeaders } = await generateCsrfTokenEdge({ secure: isSecure });
       response.headers.set('X-CSRF-Token', rawToken);
       for (const cookieHeader of setCookieHeaders) {
         response.headers.append('Set-Cookie', cookieHeader);

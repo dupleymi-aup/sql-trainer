@@ -119,11 +119,14 @@ export async function generateCsrfToken(): Promise<string> {
  * Edge-runtime compatible — does not use next/headers cookies().
  * Returns { rawToken, setCookieHeaders } — caller must add headers to response.
  */
-export async function generateCsrfTokenEdge(): Promise<{ rawToken: string; setCookieHeaders: string[] }> {
+export async function generateCsrfTokenEdge(options?: {
+  secure?: boolean;
+}): Promise<{ rawToken: string; setCookieHeaders: string[] }> {
   const rawToken = crypto.randomUUID();
   const token = await signToken(rawToken);
 
-  const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure; ' : '';
+  const useSecure = options?.secure ?? process.env.NODE_ENV === 'production';
+  const secureFlag = useSecure ? 'Secure; ' : '';
   const maxAge = CSRF_TOKEN_TTL_MS / 1000;
 
   const setCookieHeaders = [

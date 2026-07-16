@@ -34,7 +34,7 @@ export const GET = withTeacherAuth(async () => {
     .slice(0, 10)
     .map((t) => ({ task_id: t.task_id, completions: t.completions, avg_attempts: t.avg_attempts }));
 
-  const strugglingTasks = errorPatterns
+  const strugglingTasks = [...errorPatterns]
     .sort((a, b) => b.avg_attempts - a.avg_attempts)
     .slice(0, 10)
     .map((p) => ({ task_id: p.task_id, avg_attempts: p.avg_attempts, failure_rate: p.failure_rate }));

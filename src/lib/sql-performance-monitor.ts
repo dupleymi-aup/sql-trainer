@@ -20,12 +20,36 @@ const MAX_RETENTION_DAYS = 30;
 const SLOW_QUERY_THRESHOLD_MS = 1000;
 const VERY_SLOW_QUERY_THRESHOLD_MS = 5000;
 
+let _tableExists: boolean | null = null;
+
 /**
- * Record SQL query performance metric
+ * Record SQL query performance metric.
+ * Silently no-ops when the sql_performance table is absent (e.g. in tests).
  */
 export function recordSqlPerformance(metric: SqlPerformanceMetric): void {
   try {
     const db = getDb();
+
+    // Fast-path: skip if table was already confirmed missing
+    if (_tableExists === false) return;
+
+    // Lazy check: does the table exist?
+    if (_tableExists === null) {
+      try {
+        const tables = db
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sql_performance'")
+          .all() as Array<{ name: string }>;
+        if (tables.length === 0) {
+          _tableExists = false;
+          return;
+        }
+        _tableExists = true;
+      } catch {
+        _tableExists = false;
+        return;
+      }
+    }
+
     const collectedAt = Date.now();
 
     db.prepare(
@@ -81,7 +105,7 @@ export function getSqlPerformanceStats(days: number = 7): {
     queryType: string;
     count: number;
     avgTime: number;
-    p95Time: number;
+    worstTime: number;
     errorCount: number;
   }>;
   topSlowQueries: Array<{
@@ -95,9 +119,10 @@ export function getSqlPerformanceStats(days: number = 7): {
   const db = getDb();
   const cutoffDate = Date.now() - days * 24 * 60 * 60 * 1000;
 
-  const overall = db
-    .prepare(
-      `
+  const overall = (
+    db
+      .prepare(
+        `
     SELECT 
       COUNT(*) as totalQueries,
       AVG(execution_time_ms) as avgExecutionTime,
@@ -107,14 +132,15 @@ export function getSqlPerformanceStats(days: number = 7): {
     FROM sql_performance
     WHERE collected_at >= ?
   `,
-    )
-    .all(SLOW_QUERY_THRESHOLD_MS, cutoffDate) as Array<{
-    totalQueries: number;
-    avgExecutionTime: number;
-    worstTime: number;
-    slowQueries: number;
-    errorCount: number;
-  }>[0];
+      )
+      .all(SLOW_QUERY_THRESHOLD_MS, cutoffDate) as {
+      totalQueries: number;
+      avgExecutionTime: number | null;
+      worstTime: number | null;
+      slowQueries: number | null;
+      errorCount: number | null;
+    }[]
+  )[0] ?? { totalQueries: 0, avgExecutionTime: null, worstTime: null, slowQueries: null, errorCount: null };
 
   const byType = db
     .prepare(
@@ -180,8 +206,8 @@ export function getSqlPerformanceStats(days: number = 7): {
     totalQueries: overall.totalQueries,
     avgExecutionTime: overall.avgExecutionTime || 0,
     p95ExecutionTime: p95ExecutionTime || 0,
-    slowQueries: overall.slowQueries,
-    errorRate: overall.totalQueries > 0 ? (overall.errorCount / overall.totalQueries) * 100 : 0,
+    slowQueries: overall.slowQueries ?? 0,
+    errorRate: overall.totalQueries > 0 ? ((overall.errorCount ?? 0) / overall.totalQueries) * 100 : 0,
     byType,
     topSlowQueries: topSlow,
   };

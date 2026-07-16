@@ -308,16 +308,17 @@ export function resetGlobalRateLimiter(): void {
 async function createRedisClient(redisUrl?: string): Promise<Redis | null> {
   try {
     // Dynamic import to avoid bundling ioredis when not installed
-    const { default: Redis } = await import('ioredis').catch(() => null);
-    if (!Redis) {
+    const redisModule = await import('ioredis').catch(() => null);
+    if (!redisModule) {
       logger.warn('ioredis is not installed — distributed rate limiting will use in-memory fallback');
       return null;
     }
+    const RedisConstructor = (redisModule.default ?? redisModule) as new (url: string) => Redis;
     // Only create client if explicit URL is provided (no fallback to localhost)
     if (!redisUrl) {
       return null;
     }
-    const client = new Redis(redisUrl);
+    const client = new RedisConstructor(redisUrl);
     // Log Redis errors at debug level (connection failures are handled by initRedis)
     client.on('error', (err: Error) => logger.debug('Redis error event', { message: err.message }));
     return client;
