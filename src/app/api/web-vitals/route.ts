@@ -6,19 +6,6 @@ import { getDb } from '@/lib/db/connection';
 
 export const dynamic = 'force-dynamic';
 
-interface WebVitalMetric {
-  name: string;
-  value: number;
-  rating: string;
-  delta: number;
-  id: string;
-  navigationType: string;
-  page: string;
-  userAgent?: string;
-  deviceType?: string;
-}
-
-const VALID_METRIC_NAMES = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'FCP', 'navigation'];
 const VALID_RATINGS = ['good', 'needs-improvement', 'poor'];
 const MAX_STRING_LENGTH = 2048;
 
@@ -50,7 +37,8 @@ export async function POST(request: Request) {
       typeof raw.id === 'string' ? raw.id.slice(0, 128) : `wv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const delta = typeof raw.delta === 'number' && Number.isFinite(raw.delta) ? raw.delta : 0;
     const navigationType = typeof raw.navigationType === 'string' ? raw.navigationType.slice(0, 64) : 'unknown';
-    const deviceType = typeof raw.deviceType === 'string' ? raw.deviceType.slice(0, 32) : detectDeviceType(userAgent);
+    const deviceType =
+      typeof raw.deviceType === 'string' ? raw.deviceType.slice(0, 32) : detectDeviceType(userAgent || undefined);
 
     // Log the metric
     logger.info(`[WebVitals] ${name}=${Math.round(value)} (${rating}) page=${page}`);
