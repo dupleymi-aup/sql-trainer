@@ -582,7 +582,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-16 (error handling hardening, lint fixes, performance monitoring) |
+| Последнее обновление | 2026-07-16 (N+1 query fixes, db-users decomposition, web-vitals hardening) |
 
 ### Выполненные пункты плана
 
