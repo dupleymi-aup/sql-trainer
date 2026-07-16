@@ -18,6 +18,10 @@ interface WebVitalMetric {
   deviceType?: string;
 }
 
+const VALID_METRIC_NAMES = ['LCP', 'FID', 'CLS', 'INP', 'TTFB', 'FCP', 'navigation'];
+const VALID_RATINGS = ['good', 'needs-improvement', 'poor'];
+const MAX_STRING_LENGTH = 2048;
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -26,19 +30,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
     }
 
-    const metric: WebVitalMetric = await request.json();
+    const raw: Record<string, unknown> = await request.json();
 
-    if (!metric.name || typeof metric.value !== 'number') {
-      return NextResponse.json({ success: false, error: 'Invalid metric' }, { status: 400 });
+    // Validate required fields
+    const name = typeof raw.name === 'string' ? raw.name : '';
+    const value = typeof raw.value === 'number' && Number.isFinite(raw.value) ? raw.value : NaN;
+    if (!name || !Number.isFinite(value)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid metric: name and finite value required' },
+        { status: 400 },
+      );
     }
 
+    // Sanitize and validate optional fields
+    const rating = VALID_RATINGS.includes(raw.rating as string) ? (raw.rating as string) : 'unknown';
+    const page = typeof raw.page === 'string' ? raw.page.slice(0, MAX_STRING_LENGTH) : '/';
+    const userAgent = typeof raw.userAgent === 'string' ? raw.userAgent.slice(0, MAX_STRING_LENGTH) : null;
+    const id =
+      typeof raw.id === 'string' ? raw.id.slice(0, 128) : `wv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const delta = typeof raw.delta === 'number' && Number.isFinite(raw.delta) ? raw.delta : 0;
+    const navigationType = typeof raw.navigationType === 'string' ? raw.navigationType.slice(0, 64) : 'unknown';
+    const deviceType = typeof raw.deviceType === 'string' ? raw.deviceType.slice(0, 32) : detectDeviceType(userAgent);
+
     // Log the metric
-    logger.info(`[WebVitals] ${metric.name}=${Math.round(metric.value)} (${metric.rating}) page=${metric.page}`);
+    logger.info(`[WebVitals] ${name}=${Math.round(value)} (${rating}) page=${page}`);
 
     // Persist to database
     try {
       const db = getDb();
-      const deviceType = metric.deviceType || detectDeviceType(metric.userAgent);
       const collectedAt = Date.now();
 
       db.prepare(
@@ -46,26 +65,13 @@ export async function POST(request: Request) {
         INSERT INTO web_vitals (id, metric_name, value, rating, delta, page, navigation_type, user_agent, country, device_type, collected_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      ).run(
-        metric.id,
-        metric.name,
-        metric.value,
-        metric.rating,
-        metric.delta,
-        metric.page,
-        metric.navigationType,
-        metric.userAgent || null,
-        null, // country - could be added later with geo IP
-        deviceType,
-        collectedAt,
-      );
+      ).run(id, name, value, rating, delta, page, navigationType, userAgent, null, deviceType, collectedAt);
 
       // Clean up old data (keep last 30 days)
       const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
       db.prepare('DELETE FROM web_vitals WHERE collected_at < ?').run(thirtyDaysAgo);
     } catch (dbErr) {
       logger.error('[WebVitals] Database persistence failed:', dbErr);
-      // Don't fail the request if DB is down
     }
 
     return NextResponse.json({ success: true });

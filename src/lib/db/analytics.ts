@@ -298,20 +298,33 @@ export function getAchievementStats(filters?: TimeRangeFilters): AchievementStat
     earned_count: number;
   }[];
 
-  return achievements.map((a) => {
-    const earners = db
-      .prepare(
-        `
-      SELECT ua.user_id, u.name, ua.earned_at
-      FROM user_achievements ua
-      JOIN users u ON ua.user_id = u.id
-      WHERE ua.achievement_id = ?
-      ORDER BY ua.earned_at DESC
-      LIMIT 5
-    `,
-      )
-      .all(a.id) as { user_id: string; name: string; earned_at: number }[];
+  // Single query for all recent earners (avoids N+1 per achievement)
+  const allEarners = db
+    .prepare(
+      `
+    SELECT ua.achievement_id, ua.user_id, u.name, ua.earned_at
+    FROM user_achievements ua
+    JOIN users u ON ua.user_id = u.id
+    ORDER BY ua.earned_at DESC
+  `,
+    )
+    .all() as { achievement_id: string; user_id: string; name: string; earned_at: number }[];
 
+  // Group by achievement_id, keep top 5 per achievement
+  const earnersByAchievement = new Map<string, { user_id: string; name: string; earned_at: number }[]>();
+  for (const earner of allEarners) {
+    const list = earnersByAchievement.get(earner.achievement_id);
+    if (!list) {
+      earnersByAchievement.set(earner.achievement_id, [
+        { user_id: earner.user_id, name: earner.name, earned_at: earner.earned_at },
+      ]);
+    } else if (list.length < 5) {
+      list.push({ user_id: earner.user_id, name: earner.name, earned_at: earner.earned_at });
+    }
+  }
+
+  return achievements.map((a) => {
+    const earners = earnersByAchievement.get(a.id) || [];
     return {
       ...a,
       total_students: totalStudents.count,
@@ -606,44 +619,58 @@ export function getCohortAnalysis(filters?: TimeRangeFilters): CohortEntry[] {
     )
     .all(...userDateParams) as { cohort_month: string; total_students: number }[];
 
-  // For each cohort, calculate retention by month
+  // Single query to get all retention data (avoids N+1 per cohort × month)
+  let retentionWhere = '';
+  const retentionParams: unknown[] = [];
+  if (filters?.start_date) {
+    retentionWhere += ' AND up.completed_at >= ?';
+    retentionParams.push(filters.start_date);
+  }
+  if (filters?.end_date) {
+    retentionWhere += ' AND up.completed_at <= ?';
+    retentionParams.push(filters.end_date);
+  }
+
+  const allRetention = db
+    .prepare(
+      `
+    SELECT 
+      strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch')) as cohort_month,
+      (strftime('%Y-%m', datetime(up.completed_at / 1000, 'unixepoch')) 
+       - strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch'))) as month_offset,
+      COUNT(DISTINCT up.user_id) as active_students
+    FROM users u
+    JOIN user_progress up ON u.id = up.user_id
+    WHERE u.role = 'student'
+      AND strftime('%Y-%m', datetime(up.completed_at / 1000, 'unixepoch')) >= 
+          strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch'))
+      AND strftime('%Y-%m', datetime(up.completed_at / 1000, 'unixepoch')) < 
+          strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch', '+4 months'))
+      ${retentionWhere}
+    GROUP BY cohort_month, month_offset
+  `,
+    )
+    .all(...retentionParams) as { cohort_month: string; month_offset: number; active_students: number }[];
+
+  // Build retention lookup
+  const retentionMap = new Map<string, Map<number, number>>();
+  for (const row of allRetention) {
+    let cohortMap = retentionMap.get(row.cohort_month);
+    if (!cohortMap) {
+      cohortMap = new Map();
+      retentionMap.set(row.cohort_month, cohortMap);
+    }
+    cohortMap.set(row.month_offset, row.active_students);
+  }
+
   return cohorts.map((cohort) => {
-    const monthOffsets = [0, 1, 2, 3];
-    const retention = monthOffsets.map((offset) => {
-      let progressDateCondition = '';
-      const progressDateParams: unknown[] = [cohort.cohort_month, `+${offset} months`];
-      if (filters?.start_date) {
-        progressDateCondition += ' AND up.completed_at >= ?';
-        progressDateParams.push(filters.start_date);
-      }
-      if (filters?.end_date) {
-        progressDateCondition += ' AND up.completed_at <= ?';
-        progressDateParams.push(filters.end_date);
-      }
-
-      const row = db
-        .prepare(
-          `
-        SELECT COUNT(DISTINCT up.user_id) as active_students
-        FROM users u
-        JOIN user_progress up ON u.id = up.user_id
-        WHERE u.role = 'student'
-          AND strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch')) = ?
-          AND strftime('%Y-%m', datetime(up.completed_at / 1000, 'unixepoch')) = 
-              strftime('%Y-%m', datetime(u.created_at / 1000, 'unixepoch', ?))${progressDateCondition}
-      `,
-        )
-        .get(...progressDateParams) as { active_students: number };
-
-      return row.active_students;
-    });
-
+    const cohortRetention = retentionMap.get(cohort.cohort_month) || new Map();
     return {
       cohort_month: cohort.cohort_month,
-      month_0: retention[0],
-      month_1: retention[1],
-      month_2: retention[2],
-      month_3: retention[3],
+      month_0: cohortRetention.get(0) || 0,
+      month_1: cohortRetention.get(1) || 0,
+      month_2: cohortRetention.get(2) || 0,
+      month_3: cohortRetention.get(3) || 0,
       total_students: cohort.total_students,
     };
   });
@@ -1972,16 +1999,29 @@ export function getStudentSkillBreakdown(): StudentSkillBreakdown[] {
 
   const result: StudentSkillBreakdown[] = [];
 
-  for (const student of students) {
-    const completedTasks = db
-      .prepare(
-        `
-      SELECT task_id FROM user_progress WHERE user_id = ?
-    `,
-      )
-      .all(student.user_id) as { task_id: string }[];
+  // Single query to get all completed tasks for all students (avoids N+1)
+  const allCompleted = db
+    .prepare(
+      `
+    SELECT user_id, task_id FROM user_progress
+    WHERE user_id IN (SELECT id FROM users WHERE role = 'student')
+  `,
+    )
+    .all() as { user_id: string; task_id: string }[];
 
-    const completedSet = new Set(completedTasks.map((t) => t.task_id));
+  // Group by user_id
+  const completedByUser = new Map<string, Set<string>>();
+  for (const row of allCompleted) {
+    let set = completedByUser.get(row.user_id);
+    if (!set) {
+      set = new Set();
+      completedByUser.set(row.user_id, set);
+    }
+    set.add(row.task_id);
+  }
+
+  for (const student of students) {
+    const completedSet = completedByUser.get(student.user_id) || new Set();
     const skills: Record<string, { completed: number; total: number; score: number }> = {};
     let totalCompleted = 0;
     let totalAvailable = 0;
@@ -8656,3 +8696,110 @@ export function getStudentAcademicSummary(userId: string): StudentAcademicSummar
 // ==================== End Student Academic Performance ====================
 
 // ==================== End Expanded Analytics ====================
+
+// ==================== Teacher Student Progress ====================
+
+export interface StudentProgress {
+  user_id: string;
+  name: string;
+  email: string;
+  tasks_completed: number;
+  total_attempts: number;
+  avg_attempts: number;
+  last_active: number | null;
+}
+
+export function getTeacherStudentProgress(): StudentProgress[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `
+    SELECT u.id as user_id, u.name, u.email,
+           COUNT(up.task_id) as tasks_completed,
+           COALESCE(SUM(up.attempts), 0) as total_attempts,
+           COALESCE(ROUND(AVG(up.attempts * 1.0), 2), 0) as avg_attempts,
+           MAX(up.completed_at) as last_active
+    FROM users u
+    LEFT JOIN user_progress up ON u.id = up.user_id
+    WHERE u.role = 'student'
+    GROUP BY u.id, u.name, u.email
+    ORDER BY tasks_completed DESC, total_attempts ASC
+  `,
+    )
+    .all() as StudentProgress[];
+}
+
+// ==================== Student Skill Gap ====================
+
+export interface SkillGap {
+  category: string;
+  tasks_total: number;
+  tasks_completed: number;
+  completion_pct: number;
+  avg_attempts: number;
+  struggle_tasks: { task_id: string; title: string; attempts: number }[];
+  strength_level: 'weak' | 'developing' | 'proficient' | 'strong' | 'mastered';
+}
+
+export function getStudentSkillGap(userId: string): SkillGap[] {
+  const db = getDb();
+  const completedTasks = db.prepare('SELECT task_id, attempts FROM user_progress WHERE user_id = ?').all(userId) as {
+    task_id: string;
+    attempts: number;
+  }[];
+
+  const completedMap = new Map(completedTasks.map((t) => [t.task_id, t.attempts]));
+  const categoryMap = new Map<
+    string,
+    {
+      total: number;
+      completed: number;
+      totalAttempts: number;
+      struggleTasks: { task_id: string; title: string; attempts: number }[];
+    }
+  >();
+
+  for (const task of TRAINING_TASKS) {
+    const cat = task.category || 'general';
+    let entry = categoryMap.get(cat);
+    if (!entry) {
+      entry = { total: 0, completed: 0, totalAttempts: 0, struggleTasks: [] };
+      categoryMap.set(cat, entry);
+    }
+    entry.total++;
+
+    const attemptInfo = completedMap.get(task.id);
+    if (attemptInfo !== undefined) {
+      entry.completed++;
+      entry.totalAttempts += attemptInfo;
+      if (attemptInfo > 3) {
+        entry.struggleTasks.push({ task_id: task.id, title: task.title, attempts: attemptInfo });
+      }
+    }
+  }
+
+  const result: SkillGap[] = [];
+  for (const [category, data] of categoryMap) {
+    const completionPct = Math.round((data.completed / data.total) * 100);
+    const avgAttempts = data.completed > 0 ? Math.round((data.totalAttempts / data.completed) * 10) / 10 : 0;
+
+    let strengthLevel: SkillGap['strength_level'];
+    if (completionPct >= 90 && avgAttempts <= 1.5) strengthLevel = 'mastered';
+    else if (completionPct >= 75) strengthLevel = 'strong';
+    else if (completionPct >= 50) strengthLevel = 'proficient';
+    else if (completionPct >= 25) strengthLevel = 'developing';
+    else strengthLevel = 'weak';
+
+    result.push({
+      category,
+      tasks_total: data.total,
+      tasks_completed: data.completed,
+      completion_pct: completionPct,
+      avg_attempts: avgAttempts,
+      struggle_tasks: data.struggleTasks,
+      strength_level: strengthLevel,
+    });
+  }
+
+  return result.sort((a, b) => a.completion_pct - b.completion_pct);
+}

@@ -20,8 +20,7 @@ export async function saveUserProgress(userId: string, taskId: string, attempts:
       const user = db
         .prepare('SELECT streak_current, streak_longest, last_practice_date FROM users WHERE id = ?')
         .get(userId) as
-        | { streak_current: number; streak_longest: number; last_practice_date: number | null }
-        | undefined;
+        { streak_current: number; streak_longest: number; last_practice_date: number | null } | undefined;
 
       const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
@@ -93,8 +92,7 @@ export async function getAchievementDetails(achievementIds: string[]) {
     const details: { id: string; title: string; description: string; icon: string }[] = [];
     for (const id of achievementIds) {
       const row = db.prepare('SELECT id, title, description, icon FROM achievements WHERE id = ?').get(id) as
-        | { id: string; title: string; description: string; icon: string }
-        | undefined;
+        { id: string; title: string; description: string; icon: string } | undefined;
       if (row) details.push(row);
     }
     return details;
@@ -208,4 +206,11 @@ export function getLeaderboard(limit = 50, offset = 0): LeaderboardEntry[] {
   `,
     )
     .all(limit, offset) as LeaderboardEntry[];
+}
+
+export function getStudentStreak(userId: string): number {
+  const db = getDb();
+  const user = db.prepare('SELECT streak_current FROM users WHERE id = ?').get(userId) as
+    { streak_current: number | null } | undefined;
+  return user?.streak_current || 0;
 }
