@@ -4337,6 +4337,27 @@ export function getPredictiveGrades(filters?: TimeRangeFilters): PredictiveGrade
   const totalTasks = TRAINING_TASKS.length;
   const totalAdvanced = TRAINING_TASKS.filter((t) => t.difficulty === 'advanced').length || 1;
 
+  // Batch query: recent and previous activity counts per student (avoids N+1)
+  const recentCutoff = now - 14 * dayMs;
+  const previousCutoff = now - 28 * dayMs;
+  const activityCounts = db
+    .prepare(
+      `
+    SELECT user_id,
+      SUM(CASE WHEN completed_at >= ? THEN 1 ELSE 0 END) as recent_count,
+      SUM(CASE WHEN completed_at >= ? AND completed_at < ? THEN 1 ELSE 0 END) as previous_count
+    FROM user_progress
+    GROUP BY user_id
+  `,
+    )
+    .all(recentCutoff, previousCutoff, recentCutoff) as {
+    user_id: string;
+    recent_count: number;
+    previous_count: number;
+  }[];
+
+  const activityMap = new Map(activityCounts.map((a) => [a.user_id, a]));
+
   return students.map((student) => {
     const completionRate = (student.tasks_completed / totalTasks) * 100;
     const attemptEfficiency = Math.max(0, 1 - student.avg_attempts / 6) * 100;
@@ -4344,30 +4365,13 @@ export function getPredictiveGrades(filters?: TimeRangeFilters): PredictiveGrade
 
     const currentScore = Math.round(completionRate * 0.6 + attemptEfficiency * 0.25 + difficultyBonus * 0.15);
 
-    // Trajectory: compare last 14d vs prior 14d
-    const recentCount = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM user_progress
-      WHERE user_id = ? AND completed_at >= ?
-    `,
-      )
-      .get(student.id, now - 14 * dayMs) as { count: number };
-
-    const previousCount = db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM user_progress
-      WHERE user_id = ? AND completed_at >= ? AND completed_at < ?
-    `,
-      )
-      .get(student.id, now - 28 * dayMs, now - 14 * dayMs) as { count: number };
+    const activity = activityMap.get(student.id) || { recent_count: 0, previous_count: 0 };
 
     let trajectory: 'rising' | 'flat' | 'falling' = 'flat';
-    if (previousCount.count === 0) {
-      trajectory = recentCount.count > 0 ? 'rising' : 'flat';
-    } else if (recentCount.count > previousCount.count * 1.2) trajectory = 'rising';
-    else if (recentCount.count < previousCount.count * 0.8) trajectory = 'falling';
+    if (activity.previous_count === 0) {
+      trajectory = activity.recent_count > 0 ? 'rising' : 'flat';
+    } else if (activity.recent_count > activity.previous_count * 1.2) trajectory = 'rising';
+    else if (activity.recent_count < activity.previous_count * 0.8) trajectory = 'falling';
 
     // Confidence: based on data volume
     const weeksOfData =
@@ -4553,7 +4557,44 @@ export function getBottleneckAnalysis(filters?: TimeRangeFilters): BottleneckEnt
     high_attempt_students: number;
   }[];
 
-  // For drop-off: for each task, find how many completed prior tasks but not this one
+  // Batch query: students completed per difficulty level (avoids N+1)
+  const completedByDifficulty = db
+    .prepare(
+      `
+    SELECT
+      CASE
+        WHEN task_id LIKE 'beginner-%' THEN 'beginner'
+        WHEN task_id LIKE 'intermediate-%' THEN 'intermediate'
+        ELSE 'advanced'
+      END as difficulty,
+      COUNT(DISTINCT user_id) as count
+    FROM user_progress
+    WHERE 1=1${baseDateCondition}
+    GROUP BY difficulty
+  `,
+    )
+    .all(...baseDateParams) as { difficulty: string; count: number }[];
+
+  const completedPriorMap = new Map(completedByDifficulty.map((r) => [r.difficulty, r.count]));
+
+  // Batch query: students who completed this task AND went on to harder tasks (avoids N+1)
+  const subsequentCounts = db
+    .prepare(
+      `
+    SELECT up1.task_id, COUNT(DISTINCT up1.user_id) as count
+    FROM user_progress up1
+    JOIN user_progress up2 ON up1.user_id = up2.user_id
+    WHERE up2.task_id LIKE CASE
+      WHEN up1.task_id LIKE 'beginner-%' THEN 'intermediate-%'
+      WHEN up1.task_id LIKE 'intermediate-%' THEN 'advanced-%'
+      ELSE 'advanced-%'
+    END
+    GROUP BY up1.task_id
+  `,
+    )
+    .all() as { task_id: string; count: number }[];
+
+  const subsequentMap = new Map(subsequentCounts.map((r) => [r.task_id, r.count]));
 
   return taskStats
     .map((task) => {
@@ -4563,42 +4604,16 @@ export function getBottleneckAnalysis(filters?: TimeRangeFilters): BottleneckEnt
           ? 'intermediate'
           : 'advanced';
 
-      // Students who completed at least one task of same or lower difficulty but not this one
-
-      const completedPrior = db
-        .prepare(
-          `
-      SELECT COUNT(DISTINCT user_id) as count FROM user_progress
-      WHERE task_id LIKE ?${baseDateCondition}
-    `,
-        )
-        .get(
-          difficulty === 'beginner' ? 'beginner-%' : difficulty === 'intermediate' ? 'intermediate-%' : 'advanced-%',
-          ...baseDateParams,
-        ) as { count: number };
+      const completedPriorCount = completedPriorMap.get(difficulty) || 0;
 
       const dropOffRate =
-        completedPrior.count > 0
-          ? Math.round(((completedPrior.count - task.students_attempted) / completedPrior.count) * 1000) / 10
+        completedPriorCount > 0
+          ? Math.round(((completedPriorCount - task.students_attempted) / completedPriorCount) * 1000) / 10
           : 0;
 
-      // Subsequent task completion: % of students who completed this task and also completed at least one harder task
-
-      const completedSubsequent = db
-        .prepare(
-          `
-      SELECT COUNT(DISTINCT user_id) as count FROM user_progress up1
-      JOIN user_progress up2 ON up1.user_id = up2.user_id
-      WHERE up1.task_id = ? AND up2.task_id LIKE ?
-    `,
-        )
-        .get(
-          task.task_id,
-          difficulty === 'beginner' ? 'intermediate-%' : difficulty === 'intermediate' ? 'advanced-%' : 'advanced-%',
-        ) as { count: number };
-
+      const subsequentCount = subsequentMap.get(task.task_id) || 0;
       const subsequentRate =
-        task.students_attempted > 0 ? Math.round((completedSubsequent.count / task.students_attempted) * 1000) / 10 : 0;
+        task.students_attempted > 0 ? Math.round((subsequentCount / task.students_attempted) * 1000) / 10 : 0;
 
       // Severity
       let severity: 'critical' | 'high' | 'medium' | 'low';
