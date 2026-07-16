@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '7');
+    const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
 
     const stats = getSqlPerformanceStats(days);
 

@@ -17,6 +17,20 @@ export const translations: Record<Locale, Record<string, string>> = { ru, en, zh
 // Current locale (can be persisted in localStorage)
 let currentLocale: Locale = 'en';
 
+// Initialize from server-passed locale on client side
+if (typeof window !== 'undefined') {
+  const serverLocale = (window as unknown as Record<string, unknown>).NEXT_PUBLIC_LOCALE as Locale | undefined;
+  if (serverLocale && (serverLocale === 'ru' || serverLocale === 'en' || serverLocale === 'zh')) {
+    currentLocale = serverLocale;
+  } else {
+    // Fall back to localStorage
+    const stored = localStorage.getItem('sql-trainer-locale') as Locale;
+    if (stored && (stored === 'ru' || stored === 'en' || stored === 'zh')) {
+      currentLocale = stored;
+    }
+  }
+}
+
 export function setLocale(locale: Locale) {
   currentLocale = locale;
   if (typeof window !== 'undefined') {

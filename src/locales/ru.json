@@ -255,6 +255,7 @@
   "difficulty.intermediate": "Средний",
   "difficulty.advanced": "Продвинутый",
   "action.start": "Начать обучение",
+  "action.back": "Назад",
   "action.freeMode": "Свободный режим",
   "action.practice": "Режим практики",
   "action.execute": "Выполнить",

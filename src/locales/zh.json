@@ -255,6 +255,7 @@
   "difficulty.intermediate": "中级",
   "difficulty.advanced": "高级",
   "action.start": "开始训练",
+  "action.back": "返回",
   "action.freeMode": "自由模式",
   "action.practice": "练习模式",
   "action.execute": "执行",

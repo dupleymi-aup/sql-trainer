@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'longtask';
-    const days = parseInt(searchParams.get('days') || '7');
+    const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
     const page = searchParams.get('page');
 
     const db = getDb();
@@ -41,6 +41,7 @@ export async function GET(request: Request) {
 
     switch (type) {
       case 'longtask': {
+        // SQLite-compatible percentiles via sorted subqueries
         const stats = db
           .prepare(
             `
@@ -48,21 +49,30 @@ export async function GET(request: Request) {
               metric_name,
               COUNT(*) as count,
               AVG(value) as avg,
-              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) as p50,
-              PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY value) as p95,
-              PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY value) as p99,
+              (SELECT value FROM long_tasks t2 WHERE t2.metric_name = t1.metric_name AND t2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM long_tasks t3 WHERE t3.metric_name = t1.metric_name AND t3.collected_at >= ?) / 2)) as p50,
+              (SELECT value FROM long_tasks t2 WHERE t2.metric_name = t1.metric_name AND t2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM long_tasks t3 WHERE t3.metric_name = t1.metric_name AND t3.collected_at >= ?) * 95 / 100)) as p95,
+              (SELECT value FROM long_tasks t2 WHERE t2.metric_name = t1.metric_name AND t2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM long_tasks t3 WHERE t3.metric_name = t1.metric_name AND t3.collected_at >= ?) * 99 / 100)) as p99,
               MAX(value) as worst,
               SUM(CASE WHEN rating = 'good' THEN 1 ELSE 0 END) as good,
               SUM(CASE WHEN rating = 'needs_improvement' THEN 1 ELSE 0 END) as needsImprovement,
               SUM(CASE WHEN rating = 'poor' THEN 1 ELSE 0 END) as poor
-            FROM long_tasks
+            FROM long_tasks t1
             WHERE collected_at >= ?
               ${page ? 'AND page = ?' : ''}
             GROUP BY metric_name
             ORDER BY avg DESC
           `,
           )
-          .all(cutoffDate, page) as PerformanceStats[];
+          .all(
+            cutoffDate,
+            cutoffDate,
+            cutoffDate,
+            cutoffDate,
+            cutoffDate,
+            cutoffDate,
+            cutoffDate,
+            page,
+          ) as PerformanceStats[];
 
         const trend = db
           .prepare(

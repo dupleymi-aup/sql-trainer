@@ -33,13 +33,13 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const metric = searchParams.get('metric') || 'LCP';
-    const days = parseInt(searchParams.get('days') || '7');
+    const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
     const page = searchParams.get('page');
 
     const db = getDb();
     const cutoffDate = Date.now() - days * 24 * 60 * 60 * 1000;
 
-    // Get aggregated stats
+    // Get aggregated stats — SQLite-compatible percentiles via sorted subqueries
     const stats = db
       .prepare(
         `
@@ -47,21 +47,30 @@ export async function GET(request: Request) {
         metric_name,
         COUNT(*) as count,
         AVG(value) as avg,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) as p50,
-        PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY value) as p95,
-        PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY value) as p99,
+        (SELECT value FROM web_vitals w2 WHERE w2.metric_name = w1.metric_name AND w2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM web_vitals w3 WHERE w3.metric_name = w1.metric_name AND w3.collected_at >= ?) / 2)) as p50,
+        (SELECT value FROM web_vitals w2 WHERE w2.metric_name = w1.metric_name AND w2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM web_vitals w3 WHERE w3.metric_name = w1.metric_name AND w3.collected_at >= ?) * 95 / 100)) as p95,
+        (SELECT value FROM web_vitals w2 WHERE w2.metric_name = w1.metric_name AND w2.collected_at >= ? ORDER BY value LIMIT 1 OFFSET MAX(0, (SELECT COUNT(*)-1 FROM web_vitals w3 WHERE w3.metric_name = w1.metric_name AND w3.collected_at >= ?) * 99 / 100)) as p99,
         MAX(value) as worst,
         SUM(CASE WHEN rating = 'good' THEN 1 ELSE 0 END) as good,
         SUM(CASE WHEN rating = 'needs_improvement' THEN 1 ELSE 0 END) as needsImprovement,
         SUM(CASE WHEN rating = 'poor' THEN 1 ELSE 0 END) as poor
-      FROM web_vitals
+      FROM web_vitals w1
       WHERE collected_at >= ?
         ${page ? 'AND page = ?' : ''}
       GROUP BY metric_name
       ORDER BY metric_name
     `,
       )
-      .all(cutoffDate, page) as PerformanceStats[];
+      .all(
+        cutoffDate,
+        cutoffDate,
+        cutoffDate,
+        cutoffDate,
+        cutoffDate,
+        cutoffDate,
+        cutoffDate,
+        page,
+      ) as PerformanceStats[];
 
     // Get daily trend
     const trend = db

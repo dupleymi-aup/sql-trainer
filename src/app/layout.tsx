@@ -55,11 +55,14 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const locale = getLocaleFromCookies(cookieStore.toString());
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased bg-background text-foreground">
@@ -79,6 +82,11 @@ export default function RootLayout({
           <PwaInstallPrompt />
           <WebVitals />
         </ThemeProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.NEXT_PUBLIC_LOCALE=${JSON.stringify(locale)}`,
+          }}
+        />
       </body>
     </html>
   );

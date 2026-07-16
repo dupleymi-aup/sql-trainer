@@ -255,6 +255,7 @@
   "difficulty.intermediate": "Intermediate",
   "difficulty.advanced": "Advanced",
   "action.start": "Start Training",
+  "action.back": "Back",
   "action.freeMode": "Free Mode",
   "action.practice": "Practice Mode",
   "action.execute": "Execute",
