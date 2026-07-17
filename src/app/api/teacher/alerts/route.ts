@@ -5,6 +5,7 @@ import { TRAINING_TASKS } from '@/lib/training-tasks';
 import { tWithLocale } from '@/lib/i18n';
 
 const TOTAL_TASKS = TRAINING_TASKS.filter((t) => t.dbType === 'sqlite').length;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export const GET = withTeacherAuth(async ({ request }) => {
   const acceptLang = request.headers.get('accept-language') || '';
@@ -21,7 +22,7 @@ export const GET = withTeacherAuth(async ({ request }) => {
 
   const students = getTeacherStudentProgress();
   const now = Date.now();
-  const sevenDays = 7 * 24 * 60 * 60 * 1000;
+  const sevenDays = 7 * MS_PER_DAY;
 
   const alerts: Array<{
     type: 'at_risk' | 'inactive' | 'struggling' | 'excelling';
@@ -43,9 +44,7 @@ export const GET = withTeacherAuth(async ({ request }) => {
     }
 
     if (!student.last_active || student.last_active < now - sevenDays) {
-      const daysInactive = student.last_active
-        ? Math.floor((now - student.last_active) / (24 * 60 * 60 * 1000))
-        : 'never';
+      const daysInactive = student.last_active ? Math.floor((now - student.last_active) / MS_PER_DAY) : 'never';
       alerts.push({
         type: 'inactive',
         studentId: student.user_id,

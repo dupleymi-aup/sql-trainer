@@ -45,10 +45,6 @@ export interface DatabaseSlice {
   // Execution state
   isExecuting: boolean;
   setIsExecuting: (executing: boolean) => void;
-
-  // UI state referenced by database setters
-  solutionVisible: boolean;
-  setSolutionVisible: (visible: boolean) => void;
 }
 
 export const createDatabaseSlice: StateCreator<DatabaseSlice, [], [], DatabaseSlice> = (set) => ({
@@ -61,7 +57,6 @@ export const createDatabaseSlice: StateCreator<DatabaseSlice, [], [], DatabaseSl
       currentTaskId: id,
       editorContent: '',
       lastResult: null,
-      solutionVisible: false,
       verification: null,
     }),
 
@@ -76,7 +71,4 @@ export const createDatabaseSlice: StateCreator<DatabaseSlice, [], [], DatabaseSl
 
   isExecuting: false,
   setIsExecuting: (executing) => set({ isExecuting: executing }),
-
-  solutionVisible: false,
-  setSolutionVisible: (visible) => set({ solutionVisible: visible }),
 });

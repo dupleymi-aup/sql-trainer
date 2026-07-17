@@ -249,7 +249,11 @@ export default function WelcomePanel({ onStartTraining, onFreeMode, onStartTour 
                 </Badge>
               )}
             </div>
-            <button onClick={() => setCurrentTaskId(recommendedTask.id)} className="w-full text-left group">
+            <button
+              onClick={() => setCurrentTaskId(recommendedTask.id)}
+              className="w-full text-left group"
+              aria-label={recommendedTask.title}
+            >
               <p className="text-sm font-bold text-blue-900 dark:text-blue-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                 {recommendedTask.title}
               </p>

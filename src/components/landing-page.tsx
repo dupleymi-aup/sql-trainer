@@ -345,6 +345,7 @@ function AuthSidebar({ t }: { t: (key: string) => string }) {
             <button
               className="absolute top-4 right-4 p-2 text-muted-foreground hover:text-foreground"
               onClick={() => setIsOpen(false)}
+              aria-label="Close menu"
             >
               <X className="h-5 w-5" />
             </button>
@@ -886,19 +887,13 @@ export default function LandingPage({ locale }: { locale?: Locale }) {
               <h4 className="font-semibold mb-4">{t('landing.footer.about')}</h4>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
-                  <Link href="#" className="hover:text-foreground transition-colors">
-                    {t('landing.footer.documentation')}
-                  </Link>
+                  <span className="text-muted-foreground/60">{t('landing.footer.documentation')}</span>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-foreground transition-colors">
-                    {t('landing.footer.sourceCode')}
-                  </Link>
+                  <span className="text-muted-foreground/60">{t('landing.footer.sourceCode')}</span>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-foreground transition-colors">
-                    {t('landing.footer.community')}
-                  </Link>
+                  <span className="text-muted-foreground/60">{t('landing.footer.community')}</span>
                 </li>
               </ul>
             </div>
@@ -906,14 +901,10 @@ export default function LandingPage({ locale }: { locale?: Locale }) {
               <h4 className="font-semibold mb-4">{t('landing.footer.terms')}</h4>
               <ul className="space-y-3 text-sm text-muted-foreground">
                 <li>
-                  <Link href="#" className="hover:text-foreground transition-colors">
-                    {t('landing.footer.privacy')}
-                  </Link>
+                  <span className="text-muted-foreground/60">{t('landing.footer.privacy')}</span>
                 </li>
                 <li>
-                  <Link href="#" className="hover:text-foreground transition-colors">
-                    {t('landing.footer.terms')}
-                  </Link>
+                  <span className="text-muted-foreground/60">{t('landing.footer.terms')}</span>
                 </li>
               </ul>
             </div>

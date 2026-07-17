@@ -57,6 +57,7 @@ export function AnalyticsCard({
               onClick={onRefresh}
               className="rounded p-1.5 hover:bg-muted transition-colors"
               title={t('analytics.refresh')}
+              aria-label={t('analytics.refresh')}
             >
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -85,6 +86,7 @@ export function AnalyticsCard({
               onClick={onRefresh}
               className="rounded p-1.5 hover:bg-muted transition-colors"
               title={t('analytics.refresh')}
+              aria-label={t('analytics.refresh')}
             >
               <RefreshCw className="h-4 w-4 text-muted-foreground" />
             </button>

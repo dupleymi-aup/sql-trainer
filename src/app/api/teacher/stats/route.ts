@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 import { getTeacherStudentProgress } from '@/lib/db-users';
 import { TRAINING_TASKS } from '@/lib/training-tasks';
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export const GET = withTeacherAuth(async () => {
   const students = getTeacherStudentProgress();
 
   const totalStudents = students.length;
-  const activeStudents = students.filter(
-    (s) => s.last_active && s.last_active > Date.now() - 7 * 24 * 60 * 60 * 1000,
-  ).length;
+  const activeStudents = students.filter((s) => s.last_active && s.last_active > Date.now() - 7 * MS_PER_DAY).length;
   const totalCompletions = students.reduce((sum, s) => sum + s.tasks_completed, 0);
   const avgCompletionRate =
     totalStudents > 0

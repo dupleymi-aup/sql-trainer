@@ -3,16 +3,19 @@ import type { TimerSlice } from './timer-slice-types';
 
 export type { TimerSlice };
 
+const DEFAULT_TIMER_DURATION = 15 * 60; // 15 minutes in seconds
+const WARNING_THRESHOLD = 60; // 1 minute in seconds
+
 export const createTimerSlice: StateCreator<TimerSlice, [], [], TimerSlice> = (set, get) => ({
   timer: {
     isActive: false,
-    timeRemaining: 900, // 15 minutes default
-    totalDuration: 900,
+    timeRemaining: DEFAULT_TIMER_DURATION,
+    totalDuration: DEFAULT_TIMER_DURATION,
     isPaused: false,
   },
   timerSettings: {
-    defaultDuration: 900, // 15 minutes
-    warningThreshold: 60, // 1 minute
+    defaultDuration: DEFAULT_TIMER_DURATION,
+    warningThreshold: WARNING_THRESHOLD,
   },
 
   startTimer: (durationInSeconds?: number) => {

@@ -2,7 +2,6 @@
  * Progress slice — manages completed tasks, bookmarks, streak, and saved queries.
  */
 import type { StateCreator } from 'zustand';
-export type { DbType } from '@/lib/training-tasks';
 
 const MAX_QUERY_HISTORY = 50;
 const MAX_SAVED_QUERIES = 50;

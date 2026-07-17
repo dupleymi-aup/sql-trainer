@@ -236,6 +236,7 @@ export default function SQLReference({ onInsertExample }: SQLReferenceProps) {
                               onClick={() => handleInsert(item.code, itemKey)}
                               className="shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-background"
                               title={t('sqlRef.insert')}
+                              aria-label={t('sqlRef.insert')}
                             >
                               {isCopied ? (
                                 <Check className="h-3 w-3 text-emerald-500" />

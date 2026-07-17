@@ -83,6 +83,14 @@
 3. **[x] Duplicate XP extraction** — вынесен `getXpBase(difficulty)` в level-calculator.ts, убран дублированный тернарный оператор из index.ts и gamification-slice.ts.
 4. **[x] Test fix** — обновлён `user-progress.test.ts` для проверки 500 ответа вместо rejected promise после добавления error handling.
 
+## План из 10 пунктов (2026-07-17) — сессия 6
+
+1. **[x] Store dead state consolidation** — удалены `solutionVisible`/`setSolutionVisible` из database-slice (дублировались с ui-slice, ui-slice перезаписывал).
+2. **[x] Dead code cleanup** — удалён неиспользуемый `export type { DbType }` из progress-slice.ts.
+3. **[x] Magic numbers extraction** — вынесен `MS_PER_DAY` констант в analytics.ts (58 замен), teacher/alerts и teacher/stats. Вынесены `DEFAULT_TIMER_DURATION` и `WARNING_THRESHOLD` в timer-slice.ts.
+4. **[x] Landing page fixes** — добавлен `aria-label="Close menu"` на кнопку закрытия мобильного меню, 5 placeholder ссылок `href="#"` заменены на `<span>` (не ведут никуда).
+5. **[x] Accessibility improvements** — добавлены `aria-label` на 5 icon-only кнопок: sql-reference insert, analytics-card refresh (x2), group-management clear search, welcome-panel task button.
+
 ---
 
 ## Сводка текущего состояния
@@ -603,7 +611,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-17 (API error handling, dead store cleanup, XP extraction) |
+| Последнее обновление | 2026-07-17 (store consolidation, MS_PER_DAY extraction, accessibility fixes) |
 
 ### Выполненные пункты плана
 

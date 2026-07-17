@@ -5,6 +5,9 @@ import { logAudit } from './users';
 import { TRAINING_TASKS } from '../training-tasks';
 import { logger } from '../logger';
 import { toTitleCase } from '../string-utils';
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 // ==================== Analytics ====================
 
 // Database stats for admin
@@ -346,7 +349,7 @@ function getDailyActivityInternal(
   fillRange: 'days' | 'filter',
 ): DailyActivityEntry[] {
   const db = getDb();
-  const cutoff = filters?.start_date ?? Date.now() - days * 24 * 60 * 60 * 1000;
+  const cutoff = filters?.start_date ?? Date.now() - days * MS_PER_DAY;
 
   let query = `
     SELECT
@@ -467,7 +470,7 @@ export function getAdminLeaderboard(limit = 50, filters?: TimeRangeFilters): Adm
 
 export function getActiveUsersCount(days = 7, filters?: TimeRangeFilters): number {
   const db = getDb();
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - days * MS_PER_DAY;
 
   let query = `
     SELECT COUNT(DISTINCT user_id) as count
@@ -523,7 +526,7 @@ export interface WeeklyProgressEntry {
 
 export function getWeeklyProgress(weeks = 12): WeeklyProgressEntry[] {
   const db = getDb();
-  const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - weeks * 7 * MS_PER_DAY;
 
   const rows = db
     .prepare(
@@ -559,7 +562,7 @@ export function getWeeklyProgress(weeks = 12): WeeklyProgressEntry[] {
 
   const result: WeeklyProgressEntry[] = [];
   for (let i = 0; i < weeks; i++) {
-    const d = new Date(cutoff + i * 7 * 24 * 60 * 60 * 1000);
+    const d = new Date(cutoff + i * 7 * MS_PER_DAY);
     const weekStart = d.toISOString().slice(0, 10);
     const existing = rows.find((r) => r.week_start === weekStart);
     const newStudentsEntry = studentSets.find((r) => r.week_start === weekStart);
@@ -746,8 +749,8 @@ export function getStudentPerformanceCards(limit = 20, filters?: TimeRangeFilter
   }[];
 
   const now = Date.now();
-  const recentCutoff = now - 30 * 24 * 60 * 60 * 1000;
-  const previousCutoff = now - 60 * 24 * 60 * 60 * 1000;
+  const recentCutoff = now - 30 * MS_PER_DAY;
+  const previousCutoff = now - 60 * MS_PER_DAY;
 
   // Batch: get recent completions for all students in one query
   const studentIds = students.map((s) => s.user_id);
@@ -929,7 +932,7 @@ export function generateStudentAlerts(filters?: TimeRangeFilters): StudentAlert[
   const db = getDb();
   const alerts: StudentAlert[] = [];
   const now = Date.now();
-  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = now - 7 * MS_PER_DAY;
   const totalTasks = TRAINING_TASKS.length;
 
   // Single query: fetch all student data with progress and last activity
@@ -971,7 +974,7 @@ export function generateStudentAlerts(filters?: TimeRangeFilters): StudentAlert[
   for (const student of students) {
     // Check if student is inactive (no activity in 7 days)
     if (student.last_active && student.last_active < sevenDaysAgo) {
-      const daysInactive = Math.floor((now - student.last_active) / (24 * 60 * 60 * 1000));
+      const daysInactive = Math.floor((now - student.last_active) / MS_PER_DAY);
       alerts.push({
         user_id: student.id,
         name: student.name,
@@ -999,7 +1002,7 @@ export function generateStudentAlerts(filters?: TimeRangeFilters): StudentAlert[
     }
 
     // Check if student is at risk (low completion rate after 30 days)
-    const daysSinceRegistration = Math.floor((now - student.created_at) / (24 * 60 * 60 * 1000));
+    const daysSinceRegistration = Math.floor((now - student.created_at) / MS_PER_DAY);
     if (daysSinceRegistration >= 30 && student.tasks_completed < 5) {
       alerts.push({
         user_id: student.id,
@@ -1195,7 +1198,7 @@ export interface ClassReport {
 export function generateClassReport(filters?: TimeRangeFilters): ClassReport {
   const db = getDb();
   const now = Date.now();
-  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = now - 7 * MS_PER_DAY;
 
   const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
     count: number;
@@ -1470,7 +1473,7 @@ export function getTimeToCompleteEstimates(filters?: TimeRangeFilters): TimeToCo
 export function getActivityHeatmap(days: number = 90): HeatmapEntry[] {
   const db = getDb();
   const now = Date.now();
-  const cutoffTime = now - days * 24 * 60 * 60 * 1000;
+  const cutoffTime = now - days * MS_PER_DAY;
 
   const rows = db
     .prepare(
@@ -1496,7 +1499,7 @@ export function getActivityHeatmap(days: number = 90): HeatmapEntry[] {
 
   const result: HeatmapEntry[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now - i * 24 * 60 * 60 * 1000);
+    const d = new Date(now - i * MS_PER_DAY);
     const dateStr = d.toISOString().split('T')[0];
     const dayOfWeek = d.getDay();
     const weekNum = Math.floor((days - 1 - i) / 7);
@@ -1515,7 +1518,7 @@ export function getActivityHeatmap(days: number = 90): HeatmapEntry[] {
 export function getStudentEngagementMetrics(limit: number = 50, filters?: TimeRangeFilters): EngagementMetric[] {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
 
   let dateCondition = '';
   const dateParams: unknown[] = [];
@@ -1612,7 +1615,7 @@ export interface WeekOverWeekEntry {
 export function getChurnPredictions(limit: number = 50, filters?: TimeRangeFilters): ChurnPrediction[] {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
 
   let baseDateCondition = '';
   const baseDateParams: unknown[] = [];
@@ -1782,7 +1785,7 @@ export function getChurnPredictions(limit: number = 50, filters?: TimeRangeFilte
 export function getWeekOverWeekComparison(filters?: TimeRangeFilters): WeekOverWeekEntry[] {
   const db = getDb();
   const now = Date.now();
-  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const weekMs = 7 * MS_PER_DAY;
 
   const currentWeekStart = now - weekMs;
   const previousWeekStart = now - 2 * weekMs;
@@ -2172,7 +2175,7 @@ export interface MasteryWeekEntry {
 export function getMasteryProgression(weeks: number = 12, filters?: TimeRangeFilters): MasteryWeekEntry[] {
   const db = getDb();
   const now = Date.now();
-  const cutoff = now - weeks * 7 * 24 * 60 * 60 * 1000;
+  const cutoff = now - weeks * 7 * MS_PER_DAY;
   const categories = buildTaskSkillCategories();
 
   let effectiveCutoff = cutoff;
@@ -3264,8 +3267,8 @@ export interface SystemHealth {
 export function getSystemHealth(): SystemHealth {
   const db = getDb();
   const now = Date.now();
-  const oneDayAgo = now - 24 * 60 * 60 * 1000;
-  const oneWeekAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const oneDayAgo = now - MS_PER_DAY;
+  const oneWeekAgo = now - 7 * MS_PER_DAY;
 
   try {
     db.prepare('SELECT 1').get();
@@ -3459,7 +3462,7 @@ export interface GrowthTrendEntry {
 export function getStudentGrowthTrends(weeks: number = 12, filters?: TimeRangeFilters): GrowthTrendEntry[] {
   const db = getDb();
   const now = Date.now();
-  const oldestWeekStart = now - (weeks - 1) * 7 * 24 * 60 * 60 * 1000;
+  const oldestWeekStart = now - (weeks - 1) * 7 * MS_PER_DAY;
 
   let userDateCondition = '';
   const userDateParams: unknown[] = [oldestWeekStart];
@@ -3516,8 +3519,8 @@ export function getStudentGrowthTrends(weeks: number = 12, filters?: TimeRangeFi
   // Build result for each week
   const result: GrowthTrendEntry[] = [];
   for (let i = weeks - 1; i >= 0; i--) {
-    const weekEnd = now - i * 7 * 24 * 60 * 60 * 1000;
-    const weekStart = weekEnd - 7 * 24 * 60 * 60 * 1000;
+    const weekEnd = now - i * 7 * MS_PER_DAY;
+    const weekStart = weekEnd - 7 * MS_PER_DAY;
     const weekKey = new Date(weekStart).toISOString().slice(0, 10).replace(/-/g, '').slice(0, 6);
 
     const totalUsers = (
@@ -3554,7 +3557,7 @@ export interface CohortComparisonEntry {
 export function getCohortComparison(): { cohorts: CohortComparisonEntry[] } {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
   const cohortDefs = [
     { name: 'Last 30 days', start: now - 30 * dayMs, end: now },
     { name: '30-90 days ago', start: now - 90 * dayMs, end: now - 30 * dayMs },
@@ -3636,7 +3639,7 @@ export function getErrorTrendAnalysis(days: number = 90, filters?: TimeRangeFilt
   if (filters?.start_date) {
     cutoff = filters.start_date;
   } else {
-    cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    cutoff = Date.now() - days * MS_PER_DAY;
   }
 
   let query = `
@@ -3801,7 +3804,7 @@ export function getStudentLearningPace(filters?: TimeRangeFilters): LearningPace
         tasksRemaining > 0 && avgGap > 0 ? Math.round(((tasksRemaining * avgGap) / 60) * 10) / 10 : 0;
 
       const now = Date.now();
-      const recentCount = progress.filter((p) => p.completed_at >= now - 30 * 24 * 60 * 60 * 1000).length;
+      const recentCount = progress.filter((p) => p.completed_at >= now - 30 * MS_PER_DAY).length;
       const recent_velocity = Math.round((recentCount / 4) * 10) / 10;
 
       return {
@@ -3878,9 +3881,7 @@ export function getTaskPerformanceDetail(filters?: TimeRangeFilters): TaskPerfor
   // Get recent vs previous period for trend
   const now = Date.now();
   const midPoint =
-    filters?.start_date && filters?.end_date
-      ? (filters.start_date + filters.end_date) / 2
-      : now - 30 * 24 * 60 * 60 * 1000;
+    filters?.start_date && filters?.end_date ? (filters.start_date + filters.end_date) / 2 : now - 30 * MS_PER_DAY;
 
   // Batch query: recent vs previous success counts per task (avoids N+1)
   const recentSuccessByTask = db
@@ -4079,7 +4080,7 @@ export interface StudentGroupEntry {
 export function getStudentGroupsAnalytics(): StudentGroupEntry[] {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
 
   // Define groups by different criteria
   const groups = [
@@ -4182,8 +4183,8 @@ export function getTopicPerformanceAnalysis(filters?: TimeRangeFilters): TopicPe
   const db = getDb();
   const categories = buildTaskSkillCategories();
   const now = Date.now();
-  const recentCutoff = now - 30 * 24 * 60 * 60 * 1000;
-  const previousCutoff = now - 60 * 24 * 60 * 60 * 1000;
+  const recentCutoff = now - 30 * MS_PER_DAY;
+  const previousCutoff = now - 60 * MS_PER_DAY;
 
   return categories.map((cat) => {
     const placeholders = cat.taskIds.map(() => '?').join(',');
@@ -4292,7 +4293,7 @@ export interface PredictiveGradeEntry {
 export function getPredictiveGrades(filters?: TimeRangeFilters): PredictiveGradeEntry[] {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
 
   let baseDateCondition = '';
   const baseDateParams: unknown[] = [];
@@ -4492,7 +4493,7 @@ export function getLearningPathEffectiveness(filters?: TimeRangeFilters): Learni
 
     const daysSpan =
       progress.length >= 2
-        ? Math.max(1, (progress[progress.length - 1].completed_at - progress[0].completed_at) / (24 * 60 * 60 * 1000))
+        ? Math.max(1, (progress[progress.length - 1].completed_at - progress[0].completed_at) / MS_PER_DAY)
         : 0;
 
     return {
@@ -4665,7 +4666,7 @@ export interface PeerComparisonEntry {
 export function getPeerComparisonMatrix(_filters?: TimeRangeFilters): PeerComparisonEntry[] {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
   const totalTasks = TRAINING_TASKS.length;
 
   const students = db
@@ -5213,7 +5214,7 @@ export function getDeadlineCompliance(filters?: TimeRangeFilters): DeadlineCompl
           completedOnTime++;
         } else {
           completedLate++;
-          const daysOverdue = Math.round((completion.completed_at - deadline.due_at) / (24 * 60 * 60 * 1000));
+          const daysOverdue = Math.round((completion.completed_at - deadline.due_at) / MS_PER_DAY);
           totalOverdue += daysOverdue;
           overdueStudents.push({
             user_id: student.id,
@@ -5227,7 +5228,7 @@ export function getDeadlineCompliance(filters?: TimeRangeFilters): DeadlineCompl
         }
       } else if (deadline.due_at < now) {
         totalOverdue++;
-        const daysOverdue = Math.round((now - deadline.due_at) / (24 * 60 * 60 * 1000));
+        const daysOverdue = Math.round((now - deadline.due_at) / MS_PER_DAY);
         overdueStudents.push({
           user_id: student.id,
           name: student.name,
@@ -5793,7 +5794,7 @@ export function getReEngagementMetrics(filters?: TimeRangeFilters): ReEngagement
     }
   }
 
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
   const GAP_THRESHOLD = 7 * dayMs; // 7 days gap
 
   const reEngaged: ReEngagementReport['re_engaged_students'] = [];
@@ -5988,7 +5989,7 @@ export function getPushSubscriptionStats(): PushSubscriptionReport {
     .get() as { count: number };
 
   const now = Date.now();
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = now - 30 * MS_PER_DAY;
 
   const activeSubscriptions = db
     .prepare(
@@ -6122,8 +6123,8 @@ export function getRegistrationTrends(filters?: TimeRangeFilters): RegistrationT
 
   // Summary
   const now = Date.now();
-  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const weekAgo = now - 7 * MS_PER_DAY;
+  const monthAgo = now - 30 * MS_PER_DAY;
 
   const newThisWeek = db
     .prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'student' AND created_at >= ?`)
@@ -6180,7 +6181,7 @@ export interface ActivitySummaryReport {
 export function getActivitySummary(filters?: TimeRangeFilters): ActivitySummaryReport {
   const db = getDb();
   const now = Date.now();
-  const dayMs = 24 * 60 * 60 * 1000;
+  const dayMs = MS_PER_DAY;
 
   let dateCondition = '';
   const dateParams: unknown[] = [];
@@ -6559,8 +6560,8 @@ export function getAuditLog(filters?: TimeRangeFilters): AuditLogReport {
   }
 
   const now = Date.now();
-  const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
-  const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+  const weekAgo = now - 7 * MS_PER_DAY;
+  const monthAgo = now - 30 * MS_PER_DAY;
 
   return {
     entries: entries.slice(0, 100),
@@ -6766,7 +6767,7 @@ export function getLiveActivity(): {
   const now = Date.now();
   const fiveMinAgo = now - 5 * 60 * 1000;
   const oneHourAgo = now - 60 * 60 * 1000;
-  const twentyFourHAgo = now - 24 * 60 * 60 * 1000;
+  const twentyFourHAgo = now - MS_PER_DAY;
 
   const activeLast5min = db
     .prepare(
@@ -6866,7 +6867,7 @@ export function generateLearningPlan(userId: string): {
     WHERE user_id = ? AND completed_at >= ?
   `,
     )
-    .get(userId, Date.now() - 7 * 24 * 60 * 60 * 1000) as { count: number };
+    .get(userId, Date.now() - 7 * MS_PER_DAY) as { count: number };
 
   const velocity = recentProgress.count || 1; // At least 1 task/week estimate
   const remainingTasks = remainingByDiff.length;
@@ -6902,7 +6903,7 @@ export function generateLearningPlan(userId: string): {
   if (completedByDiff.beginner < 8) {
     const beginnerRemaining = 8 - completedByDiff.beginner;
     const beginnerWeeks = Math.ceil(beginnerRemaining / velocity);
-    const targetDate = new Date(now.getTime() + beginnerWeeks * 7 * 24 * 60 * 60 * 1000);
+    const targetDate = new Date(now.getTime() + beginnerWeeks * 7 * MS_PER_DAY);
     milestones.push({
       milestone: 'Complete all beginner tasks',
       target_date: targetDate.toISOString().slice(0, 10),
@@ -6915,7 +6916,7 @@ export function generateLearningPlan(userId: string): {
       (completedByDiff.beginner >= 8 ? intermediateRemaining : intermediateRemaining + 8 - completedByDiff.beginner) /
         velocity,
     );
-    const targetDate = new Date(now.getTime() + intermediateWeeks * 7 * 24 * 60 * 60 * 1000);
+    const targetDate = new Date(now.getTime() + intermediateWeeks * 7 * MS_PER_DAY);
     milestones.push({
       milestone: 'Complete all intermediate tasks',
       target_date: targetDate.toISOString().slice(0, 10),
@@ -6925,7 +6926,7 @@ export function generateLearningPlan(userId: string): {
   // Risk factors
   const riskFactors: string[] = [];
   const lastActive = progress.last_active;
-  if (lastActive && now.getTime() - lastActive > 7 * 24 * 60 * 60 * 1000) {
+  if (lastActive && now.getTime() - lastActive > 7 * MS_PER_DAY) {
     riskFactors.push('Inactive for 7+ days');
   }
   if (progress.avg_attempts > 3) {
@@ -7525,7 +7526,7 @@ export function getExecutiveSummary(filters?: TimeRangeFilters) {
   };
   const activeNow = db
     .prepare(`SELECT COUNT(*) as count FROM users WHERE role = 'student' AND last_active >= ?`)
-    .get(Date.now() - 7 * 24 * 60 * 60 * 1000) as { count: number };
+    .get(Date.now() - 7 * MS_PER_DAY) as { count: number };
 
   const totalCompletions = hasDateFilters
     ? (db
@@ -7624,7 +7625,7 @@ export function getPlatformHealth() {
   const pushSubs = db.prepare(`SELECT COUNT(*) as count FROM push_subscriptions`).get() as { count: number };
   const activeUsers = db
     .prepare(`SELECT COUNT(*) as count FROM users WHERE last_active >= ?`)
-    .get(Date.now() - 24 * 60 * 60 * 1000) as { count: number };
+    .get(Date.now() - MS_PER_DAY) as { count: number };
 
   return {
     tables: tableStats,
@@ -7826,7 +7827,7 @@ export function getRegistrationFunnel() {
     ORDER BY date
   `,
     )
-    .all(Date.now() - 30 * 24 * 60 * 60 * 1000) as Array<{ date: string; count: number }>;
+    .all(Date.now() - 30 * MS_PER_DAY) as Array<{ date: string; count: number }>;
 
   return {
     funnel: {
@@ -7903,7 +7904,7 @@ export function getAggregatePerformance() {
     ORDER BY week
   `,
     )
-    .all(Date.now() - 12 * 7 * 24 * 60 * 60 * 1000) as Array<{
+    .all(Date.now() - 12 * 7 * MS_PER_DAY) as Array<{
     week: string;
     completions: number;
     unique_users: number;
@@ -7974,8 +7975,8 @@ export function getAtRiskStudents(limit = 50): AtRiskStudent[] {
     last_completion: number | null;
   }>;
 
-  const now30 = now - 30 * 24 * 60 * 60 * 1000;
-  const now60 = now - 60 * 24 * 60 * 60 * 1000;
+  const now30 = now - 30 * MS_PER_DAY;
+  const now60 = now - 60 * MS_PER_DAY;
 
   // Batch query: recent and previous completion counts per student (avoids N+1)
   const activityCounts = db
@@ -7995,9 +7996,7 @@ export function getAtRiskStudents(limit = 50): AtRiskStudent[] {
   return students
     .map((student) => {
       const completionRate = Math.round((student.tasks_completed / totalTasks) * 100);
-      const daysSinceActive = student.last_active
-        ? Math.round((now - student.last_active) / (24 * 60 * 60 * 1000))
-        : 999;
+      const daysSinceActive = student.last_active ? Math.round((now - student.last_active) / MS_PER_DAY) : 999;
 
       const activity = activityMap.get(student.user_id) || { recent_count: 0, previous_count: 0 };
 
@@ -8394,7 +8393,7 @@ export interface AttemptEfficiencyEntry {
 
 export function getAttemptEfficiencyTrends(weeks = 12): AttemptEfficiencyEntry[] {
   const db = getDb();
-  const cutoff = Date.now() - weeks * 7 * 24 * 60 * 60 * 1000;
+  const cutoff = Date.now() - weeks * 7 * MS_PER_DAY;
 
   const weeklyData = db
     .prepare(
@@ -8513,7 +8512,7 @@ export function getStudentComparisonMetrics(studentIds: string[]): StudentCompar
       .prepare('SELECT MIN(completed_at) as min_date FROM user_progress WHERE user_id = ?')
       .get(student.user_id) as { min_date: number } | undefined;
     const firstCompletionDate = firstCompletionRow?.min_date || Date.now();
-    const weeksActive = Math.max(1, Math.round((Date.now() - firstCompletionDate) / (7 * 24 * 60 * 60 * 1000)));
+    const weeksActive = Math.max(1, Math.round((Date.now() - firstCompletionDate) / (7 * MS_PER_DAY)));
     const sessionsPerWeek = Math.round((student.tasks_completed / weeksActive) * 10) / 10;
 
     // Consistency score (simplified)
@@ -8676,8 +8675,8 @@ export function getStudentAcademicSummary(userId: string): StudentAcademicSummar
   }));
 
   // Performance trend
-  const now30 = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const now60 = Date.now() - 60 * 24 * 60 * 60 * 1000;
+  const now30 = Date.now() - 30 * MS_PER_DAY;
+  const now60 = Date.now() - 60 * MS_PER_DAY;
 
   const recentCount = db
     .prepare('SELECT COUNT(*) as count FROM user_progress WHERE user_id = ? AND completed_at >= ?')
@@ -8697,7 +8696,7 @@ export function getStudentAcademicSummary(userId: string): StudentAcademicSummar
 
   // At-risk flags
   const atRiskFlags: string[] = [];
-  const daysSinceActive = user.last_active ? Math.round((Date.now() - user.last_active) / (24 * 60 * 60 * 1000)) : 999;
+  const daysSinceActive = user.last_active ? Math.round((Date.now() - user.last_active) / MS_PER_DAY) : 999;
   if (completionRate < 25) atRiskFlags.push('low_completion');
   if (daysSinceActive >= 14) atRiskFlags.push('inactive');
   if (user.avg_attempts > 3) atRiskFlags.push('high_attempts');
