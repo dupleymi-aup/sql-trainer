@@ -47,8 +47,6 @@ export interface DatabaseSlice {
   setIsExecuting: (executing: boolean) => void;
 
   // UI state referenced by database setters
-  hintVisible: boolean;
-  setHintVisible: (visible: boolean) => void;
   solutionVisible: boolean;
   setSolutionVisible: (visible: boolean) => void;
 }
@@ -63,7 +61,6 @@ export const createDatabaseSlice: StateCreator<DatabaseSlice, [], [], DatabaseSl
       currentTaskId: id,
       editorContent: '',
       lastResult: null,
-      hintVisible: false,
       solutionVisible: false,
       verification: null,
     }),
@@ -80,8 +77,6 @@ export const createDatabaseSlice: StateCreator<DatabaseSlice, [], [], DatabaseSl
   isExecuting: false,
   setIsExecuting: (executing) => set({ isExecuting: executing }),
 
-  hintVisible: false,
-  setHintVisible: (visible) => set({ hintVisible: visible }),
   solutionVisible: false,
   setSolutionVisible: (visible) => set({ solutionVisible: visible }),
 });

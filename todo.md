@@ -76,6 +76,13 @@
 3. **[x] Performance route type safety** — расширен `ExtendedPerformanceMetric` интерфейс 19 опциональными свойствами, удалены все 21 `as Record<string, unknown>` кастов в `performance/route.ts`.
 4. **[x] Keyboard shortcuts hook** — извлечены 84 строки клавиатурных шорткатов из `app/page.tsx` в переиспользуемый хук `use-keyboard-shortcuts.ts`. Уменьшен размер страницы на ~80 строк.
 
+## План из 10 пунктов (2026-07-17) — сессия 5
+
+1. **[x] API routes error handling** — добавлен try/catch + apiServerError в 8 API маршрутов: reminders, skill-gap, leaderboard, progress, achievements, engagement, cohort, churn-prediction. Все теперь возвращают `{ success: false, error }` вместо raw 500.
+2. **[x] Dead store state cleanup** — удалены `hintVisible`/`setHintVisible` из database-slice (не использовались в приложении).
+3. **[x] Duplicate XP extraction** — вынесен `getXpBase(difficulty)` в level-calculator.ts, убран дублированный тернарный оператор из index.ts и gamification-slice.ts.
+4. **[x] Test fix** — обновлён `user-progress.test.ts` для проверки 500 ответа вместо rejected promise после добавления error handling.
+
 ---
 
 ## Сводка текущего состояния
@@ -596,7 +603,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-17 (keyboard shortcuts hook, performance route types, env.example cleanup) |
+| Последнее обновление | 2026-07-17 (API error handling, dead store cleanup, XP extraction) |
 
 ### Выполненные пункты плана
 

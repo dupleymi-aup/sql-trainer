@@ -1,3 +1,10 @@
+import type { Difficulty } from '@/lib/training-tasks';
+
+/** Returns the base XP earned for completing a task of the given difficulty. */
+export function getXpBase(difficulty: Difficulty | undefined): number {
+  return difficulty === 'advanced' ? 30 : difficulty === 'intermediate' ? 20 : 10;
+}
+
 /**
  * Calculates user level and progress from total XP.
  * Each level N requires N * 100 XP to reach from level N-1.

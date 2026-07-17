@@ -218,12 +218,15 @@ describe('User Progress API', () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
-      await expect(
-        POST({
-          session: mockSession,
-          request: mockRequest,
-        } as any),
-      ).rejects.toThrow('Database error');
+      const response = await POST({
+        session: mockSession,
+        request: mockRequest,
+      } as any);
+
+      expect(response.status).toBe(500);
+      const body = await response.json();
+      expect(body.success).toBe(false);
+      expect(body.error).toBe('Internal server error');
     });
   });
 });

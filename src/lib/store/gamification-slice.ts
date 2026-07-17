@@ -3,7 +3,7 @@
  */
 import type { StateCreator } from 'zustand';
 import { TRAINING_TASKS } from '@/lib/training-tasks';
-import { calculateLevel } from './level-calculator';
+import { calculateLevel, getXpBase } from './level-calculator';
 
 export interface Achievement {
   id: string;
@@ -428,7 +428,7 @@ export const createGamificationSlice: StateCreator<GamificationSlice, [], [], Ga
     let xpGained = 0;
     if (taskId) {
       const task = TRAINING_TASKS.find((t) => t.id === taskId);
-      const xpBase = task?.difficulty === 'advanced' ? 30 : task?.difficulty === 'intermediate' ? 20 : 10;
+      const xpBase = getXpBase(task?.difficulty);
       const xpMultiplier = attempts === 1 ? 2 : attempts !== undefined && attempts <= 3 ? 1.5 : 1;
       xpGained = Math.round(xpBase * xpMultiplier);
     }

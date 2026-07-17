@@ -41,7 +41,6 @@ describe('store — database slice', () => {
     expect(useSQLTrainerStore.getState().currentTaskId).toBe('task_1');
     expect(useSQLTrainerStore.getState().editorContent).toBe('');
     expect(useSQLTrainerStore.getState().lastResult).toBeNull();
-    expect(useSQLTrainerStore.getState().hintVisible).toBe(false);
     expect(useSQLTrainerStore.getState().solutionVisible).toBe(false);
   });
 });

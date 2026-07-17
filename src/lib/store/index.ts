@@ -21,7 +21,7 @@ import { createTimerSlice } from './timer-slice';
 import type { TimerSlice } from './timer-slice-types';
 import type { StoreApi } from 'zustand';
 import { TRAINING_TASKS, getTaskById } from '@/lib/training-tasks';
-import { calculateLevel } from './level-calculator';
+import { calculateLevel, getXpBase } from './level-calculator';
 
 // Snapshot for undoing progress reset (30-second window)
 type ProgressSnapshot = {
@@ -196,7 +196,7 @@ export const useSQLTrainerStore = create<CombinedState>()(
           let totalXp = 0;
           for (const ct of newCompletedTasks) {
             const task = getTaskById(ct.taskId);
-            const xpBase = task?.difficulty === 'advanced' ? 30 : task?.difficulty === 'intermediate' ? 20 : 10;
+            const xpBase = getXpBase(task?.difficulty);
             totalXp += xpBase;
           }
           const { level, progress } = calculateLevel(totalXp);
