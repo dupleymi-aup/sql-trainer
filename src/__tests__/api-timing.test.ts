@@ -35,12 +35,16 @@ describe('withTiming', () => {
     expect(body).toEqual({ data: [1, 2, 3] });
   });
 
-  it('rethrows errors after logging', async () => {
+  it('returns 500 and logs on handler error', async () => {
     const failingHandler = withTiming(async () => {
       throw new Error('boom');
     });
 
-    await expect(failingHandler(createRequest())).rejects.toThrow('boom');
+    const response = await failingHandler(createRequest());
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body).toEqual({ success: false, error: 'Internal server error' });
+    expect(response.headers.get('X-Response-Time')).toMatch(/^\d+ms$/);
   });
 
   it('accepts custom route name', async () => {

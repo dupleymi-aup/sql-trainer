@@ -1,5 +1,3 @@
-'use client';
-
 import { SessionProvider } from 'next-auth/react';
 import { ReminderToastTrigger } from '@/components/reminders/reminder-toast-trigger';
 

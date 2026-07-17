@@ -6,6 +6,7 @@ declare module 'next-auth' {
     id: string;
     phone?: string | null;
     role: UserRole;
+    role_changed_at?: number | null;
   }
 
   interface Session {
@@ -24,5 +25,6 @@ declare module 'next-auth/jwt' {
     id: string;
     phone?: string | null;
     role: UserRole;
+    role_changed_at?: number | null;
   }
 }

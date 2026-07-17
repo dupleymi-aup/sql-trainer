@@ -37,7 +37,13 @@ export function withTiming(handler: RouteHandler, routeName?: string): RouteHand
     } catch (error) {
       const duration = Math.round(performance.now() - start);
       logger.error('API route error', error, { method, path, duration });
-      throw error;
+      return NextResponse.json(
+        { success: false, error: 'Internal server error' },
+        {
+          status: 500,
+          headers: { 'X-Response-Time': `${duration}ms` },
+        },
+      );
     }
   };
 }

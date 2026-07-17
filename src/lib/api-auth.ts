@@ -4,6 +4,7 @@
  */
 import { auth } from '@/lib/auth-internal';
 import { NextResponse } from 'next/server';
+import type { Session } from 'next-auth';
 import type { UserRole } from '@/lib/db-users';
 import { hasRole } from '@/lib/rbac';
 import { rateLimit, type RateLimitResult } from '@/lib/rate-limit';
@@ -24,18 +25,8 @@ function withRateLimitHeaders(response: NextResponse, result: RateLimitResult): 
   return response;
 }
 
-interface AuthSession {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    phone?: string | null;
-    role: UserRole;
-  };
-}
-
-export async function requireAdmin() {
-  const session = (await auth()) as AuthSession | null;
+export async function requireAdmin(): Promise<{ error: NextResponse | null; session: Session | null }> {
+  const session = await auth();
   if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
@@ -46,8 +37,8 @@ export async function requireAdmin() {
   return { error: null, session };
 }
 
-export async function requireTeacher() {
-  const session = (await auth()) as AuthSession | null;
+export async function requireTeacher(): Promise<{ error: NextResponse | null; session: Session | null }> {
+  const session = await auth();
   if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
@@ -92,13 +83,13 @@ export function parseDateParams(searchParams: URLSearchParams): {
 }
 
 type RouteHandlerContext = {
-  session: AuthSession;
+  session: Session;
   request: Request;
   params?: Record<string, string>;
 };
 
 type AnalyticsHandlerContext = {
-  session: AuthSession;
+  session: Session;
   startDate: number | null;
   endDate: number | null;
   searchParams: URLSearchParams;
@@ -128,7 +119,7 @@ interface RateLimitConfig {
  * Eliminates the near-identical withAdminAuth / withTeacherAuth implementations.
  */
 function withRoleAuth(
-  roleCheck: () => Promise<{ error: NextResponse | null; session: AuthSession | null }>,
+  roleCheck: () => Promise<{ error: NextResponse | null; session: Session | null }>,
   rateLimitPrefix: string,
   defaultRateLimit: RateLimitConfig,
   errorLabel: string,
@@ -194,7 +185,7 @@ export const withTeacherAuth = withRoleAuth(requireTeacher, 'teacher', { max: 30
  * Check that user is authenticated (no specific role required).
  */
 async function requireUser() {
-  const session = (await auth()) as AuthSession | null;
+  const session = await auth();
   if (!session?.user?.id || session.user.id === '') {
     return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }), session: null };
   }
@@ -218,7 +209,9 @@ export const withUserAuthStrict = withRoleAuth(requireUser, 'user', { max: 5, wi
  * Handles admin auth + date param parsing in one call.
  * Replaces the ~18 lines of boilerplate repeated across 50+ analytics routes.
  */
-export function withAnalyticsAuth(handler: (ctx: AnalyticsHandlerContext) => NextResponse | Promise<NextResponse>) {
+export function withAnalyticsAuth(
+  handler: (ctx: AnalyticsHandlerContext) => NextResponse | Promise<NextResponse>,
+): (request: Request) => Promise<NextResponse> {
   return async (request: Request): Promise<NextResponse> => {
     const authResult = await requireAdmin();
     if (!authResult.session) {

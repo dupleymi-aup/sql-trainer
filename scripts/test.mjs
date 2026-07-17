@@ -11,7 +11,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');
 
 const coverage = process.argv.includes('--coverage');
-const cmd = coverage ? 'npx vitest run --coverage' : 'npx vitest run';
+const watch = process.argv.includes('--watch');
+const cmd = coverage ? 'npx vitest run --coverage' : watch ? 'npx vitest' : 'npx vitest run';
 
 const child = exec(cmd, {
   cwd: root,
