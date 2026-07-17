@@ -11,6 +11,7 @@ import {
   EMPTY_ORDERS_SCHEMA,
   INDEX_DEMO_SCHEMA,
   SHOP_SCHEMA,
+  JSON_DEMO_SCHEMA,
 } from './schemas';
 
 export const ADVANCED_TASKS: TrainingTask[] = [
@@ -1277,5 +1278,57 @@ export const ADVANCED_TASKS: TrainingTask[] = [
       'SELECT c.name AS category, top.product_name, top.total_ordered FROM categories c CROSS JOIN LATERAL (SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_ordered FROM products p LEFT JOIN order_items oi ON p.id = oi.product_id WHERE p.category_id = c.id GROUP BY p.id, p.name ORDER BY total_ordered DESC LIMIT 1) top ORDER BY c.name;',
     verificationQuery:
       'SELECT COUNT(*) as count FROM categories WHERE (SELECT COUNT(*) FROM products WHERE category_id = categories.id) > 0;',
+  },
+
+  // ==================== JSON QUERIES ====================
+
+  {
+    id: 'advanced-json-1',
+    title: 'JSON Functions - Extract Values',
+    description: 'Extract values from JSON stored in TEXT columns',
+    difficulty: 'advanced',
+    dbType: 'sqlite',
+    category: 'json',
+    schema: JSON_DEMO_SCHEMA,
+    taskText:
+      'Display product names with their brand and CPU (from specs JSON). Use json_extract to get nested values.',
+    hint: "json_extract(text, '$.path.to.value') extracts a value from JSON. For nested paths: '$.specs.cpu'.",
+    sampleSolution:
+      "SELECT name, json_extract(attributes, '$.brand') as brand, json_extract(attributes, '$.specs.cpu') as cpu FROM products WHERE json_extract(attributes, '$.specs.cpu') IS NOT NULL;",
+    verificationQuery:
+      "SELECT COUNT(*) as count FROM products WHERE json_extract(attributes, '$.specs.cpu') IS NOT NULL;",
+  },
+
+  {
+    id: 'advanced-json-2',
+    title: 'JSON Functions - Query Arrays',
+    description: 'Work with JSON arrays in SQLite',
+    difficulty: 'advanced',
+    dbType: 'sqlite',
+    category: 'json',
+    schema: JSON_DEMO_SCHEMA,
+    taskText:
+      'Find all orders where the customer bought more than one product (check items array length using json_each). Display order id, email and number of items.',
+    hint: 'json_each() converts a JSON array into virtual rows. COUNT(json_each.value) gives array length.',
+    sampleSolution:
+      'SELECT o.id, o.customer_email, COUNT(*) as num_items FROM orders o, json_each(o.items) WHERE COUNT(*) > 1 GROUP BY o.id, o.customer_email;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM orders WHERE json_array_length(items) > 1;',
+  },
+
+  {
+    id: 'advanced-json-3',
+    title: 'JSON Functions - Filter by JSON Value',
+    description: 'Filter records using JSON conditions',
+    difficulty: 'advanced',
+    dbType: 'sqlite',
+    category: 'json',
+    schema: JSON_DEMO_SCHEMA,
+    taskText:
+      'Find products that have noise canceling enabled (boolean true in JSON). Display name and price from attributes.',
+    hint: "json_extract returns text — compare with 'true' for booleans. For numbers: compare with the numeric value.",
+    sampleSolution:
+      "SELECT name, json_extract(attributes, '$.price_usd') as price FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 'true';",
+    verificationQuery:
+      "SELECT COUNT(*) as count FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 'true';",
   },
 ];

@@ -432,3 +432,28 @@ INSERT INTO books (id, title, author, genre, published_year, pages, rating) VALU
 INSERT INTO books (id, title, author, genre, published_year, pages, rating) VALUES (11, 'And Quiet Flows the Don', 'Sholokhov', 'novel', 1940, 1888, 4.6);
 INSERT INTO books (id, title, author, genre, published_year, pages, rating) VALUES (12, 'Doctor Zhivago', 'Pasternak', 'novel', 1957, 560, 4.4);
 `;
+
+export const JSON_DEMO_SCHEMA = `
+CREATE TABLE products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  attributes TEXT NOT NULL
+);
+
+CREATE TABLE orders (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  customer_email TEXT NOT NULL,
+  items TEXT NOT NULL,
+  metadata TEXT
+);
+
+INSERT INTO products (id, name, attributes) VALUES (1, 'Laptop', '{"brand": "TechPro", "specs": {"cpu": "Intel i7", "ram_gb": 16, "storage_gb": 512}, "tags": ["electronics", "computers"], "price_usd": 1299}');
+INSERT INTO products (id, name, attributes) VALUES (2, 'Mouse', '{"brand": "ClickMaster", "specs": {"dpi": 1600, "buttons": 6, "wireless": true}, "tags": ["electronics", "peripherals"], "price_usd": 49}');
+INSERT INTO products (id, name, attributes) VALUES (3, 'Monitor', '{"brand": "ViewMax", "specs": {"size_inches": 27, "resolution": "2560x1440", "refresh_rate_hz": 144}, "tags": ["electronics", "displays"], "price_usd": 599}');
+INSERT INTO products (id, name, attributes) VALUES (4, 'Keyboard', '{"brand": "TypeMaster", "specs": {"switch_type": "mechanical", "backlit": true, "layout": "fullsize"}, "tags": ["electronics", "peripherals"], "price_usd": 129}');
+INSERT INTO products (id, name, attributes) VALUES (5, 'Headphones', '{"brand": "SoundWave", "specs": {"type": "over-ear", "noise_canceling": true, "battery_hours": 30}, "tags": ["electronics", "audio"], "price_usd": 249}');
+
+INSERT INTO orders (id, customer_email, items, metadata) VALUES (1, 'alice@example.com', '[{"product_id": 1, "quantity": 1}, {"product_id": 2, "quantity": 2}]', '{"source": "web", "coupon": "WELCOME10"}');
+INSERT INTO orders (id, customer_email, items, metadata) VALUES (2, 'bob@example.com', '[{"product_id": 3, "quantity": 1}]', '{"source": "mobile", "coupon": null}');
+INSERT INTO orders (id, customer_email, items, metadata) VALUES (3, 'alice@example.com', '[{"product_id": 4, "quantity": 1}, {"product_id": 5, "quantity": 1}]', '{"source": "web", "coupon": null}');
+`;
