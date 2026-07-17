@@ -12,7 +12,7 @@ const scriptContent = `
       if (r === 'dark') { document.documentElement.classList.add('dark'); }
       else { document.documentElement.classList.remove('dark'); }
       document.documentElement.style.colorScheme = r;
-    } catch(e) {}
+    } catch(e) { /* localStorage unavailable (SSR, private browsing) — fail silently */ }
   })();
 `;
 

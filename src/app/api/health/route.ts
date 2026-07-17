@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db-users';
 import { getRateLimiter } from '@/lib/rate-limiter-distributed';
 import { logger } from '@/lib/logger';
 import { withTiming } from '@/lib/api-timing';
-import { getMetrics as getDbMetrics, getRedisMetrics } from '@/lib/db-monitor';
+import { getMetrics as getDbMetrics } from '@/lib/db-monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,18 +13,9 @@ interface HealthStatus {
   uptime: number;
   version?: string;
   memory: {
-    rss: number;
     heapUsed: number;
     heapTotal: number;
-    external: number;
-    arrayBuffers: number;
     pressurePercent: number;
-  };
-  process: {
-    pid: number;
-    nodeVersion: string;
-    platform: string;
-    arch: string;
   };
   database: {
     status: 'connected' | 'disconnected' | 'error';
@@ -40,11 +31,6 @@ interface HealthStatus {
     };
   };
   redis: 'connected' | 'disconnected' | 'not_configured';
-  redisMetrics: {
-    isConnected: boolean;
-    connectionFailures: number;
-    lastError?: string;
-  };
 }
 
 export const GET = withTiming(async () => {
@@ -53,18 +39,9 @@ export const GET = withTiming(async () => {
     timestamp: Date.now(),
     uptime: Math.floor(process.uptime()),
     memory: {
-      rss: 0,
       heapUsed: 0,
       heapTotal: 0,
-      external: 0,
-      arrayBuffers: 0,
       pressurePercent: 0,
-    },
-    process: {
-      pid: process.pid,
-      nodeVersion: process.version,
-      platform: process.platform,
-      arch: process.arch,
     },
     database: {
       status: 'disconnected',
@@ -80,20 +57,13 @@ export const GET = withTiming(async () => {
       },
     },
     redis: 'disconnected',
-    redisMetrics: {
-      isConnected: false,
-      connectionFailures: 0,
-    },
   };
 
-  // Memory
+  // Memory — only expose safe subset (no RSS, no external, no arrayBuffers)
   const mem = process.memoryUsage();
   status.memory = {
-    rss: mem.rss,
     heapUsed: mem.heapUsed,
     heapTotal: mem.heapTotal,
-    external: mem.external,
-    arrayBuffers: mem.arrayBuffers,
     pressurePercent: mem.heapTotal > 0 ? Math.round((mem.heapUsed / mem.heapTotal) * 100) : 0,
   };
 
@@ -146,17 +116,6 @@ export const GET = withTiming(async () => {
     };
   } catch (metricsErr) {
     logger.warn('Health check: failed to get DB metrics', { error: String(metricsErr) });
-  }
-
-  try {
-    const redisMetrics = getRedisMetrics();
-    status.redisMetrics = {
-      isConnected: redisMetrics.isConnected,
-      connectionFailures: redisMetrics.connectionFailures,
-      lastError: redisMetrics.lastError,
-    };
-  } catch (redisMetricsErr) {
-    logger.warn('Health check: failed to get Redis metrics', { error: String(redisMetricsErr) });
   }
 
   status.version = process.env.NEXT_PUBLIC_APP_VERSION || undefined;

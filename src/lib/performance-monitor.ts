@@ -11,6 +11,30 @@
  * - SQL Query performance
  */
 
+// ============ NON-STANDARD BROWSER API TYPES ============
+
+/** Network Information API — https://developer.mozilla.org/en-US/docs/Web/API/NetworkInformation */
+interface NetworkInformation extends EventTarget {
+  readonly effectiveType: 'slow-2g' | '2g' | '3g' | '4g';
+  readonly downlink: number;
+  readonly rtt: number;
+  readonly saveData: boolean;
+  readonly type: 'bluetooth' | 'cellular' | 'ethernet' | 'none' | 'wifi' | 'wimax' | 'other' | 'unknown';
+}
+
+interface NavigatorWithNetworkInformation extends Navigator {
+  readonly connection?: NetworkInformation;
+  readonly mozConnection?: NetworkInformation;
+  readonly webkitConnection?: NetworkInformation;
+}
+
+/** Performance Navigation Timing — deprecated `type` field */
+interface PerformanceNavigationTimingWithType {
+  readonly type: 'navigate' | 'reload' | 'back_forward' | 'prerender';
+}
+
+// ============ INTERFACES ============
+
 export interface PerformanceMetric {
   type: string;
   name: string;
@@ -40,8 +64,8 @@ export function getDeviceType(): string {
 }
 
 export function getConnectionInfo(): Record<string, string | null> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const conn = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
+  const nav = navigator as NavigatorWithNetworkInformation;
+  const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
   if (!conn) return { type: 'unknown', downlink: null, rtt: null, saveData: null };
   return {
     type: conn.effectiveType || null,
@@ -60,6 +84,8 @@ export function observeLongTasks(onMetric: (metric: PerformanceMetric) => void):
     const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry instanceof PerformanceEntry && entry.entryType === 'longtask') {
+          const navEntry = performance.getEntriesByType('navigation')[0] as
+            PerformanceNavigationTimingWithType | undefined;
           const metric: PerformanceMetric = {
             type: 'longtask',
             name: 'LongTask',
@@ -67,13 +93,11 @@ export function observeLongTasks(onMetric: (metric: PerformanceMetric) => void):
             rating: entry.duration > 5000 ? 'poor' : entry.duration > 2500 ? 'needs-improvement' : 'good',
             delta: entry.duration,
             id: `lt-${entry.startTime}-${Math.random().toString(36).slice(2, 8)}`,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigationType: (performance as any).navigation?.type ? 'navigate' : 'reload',
+            navigationType: navEntry?.type === 'navigate' ? 'navigate' : 'reload',
             page: window.location.pathname,
             deviceType: getDeviceType(),
             userAgent: navigator.userAgent,
             blockDuration: entry.duration,
-            // PerformanceLongTaskTiming.at is not in standard lib types yet
             containers:
               (entry as unknown as { at?: Array<{ containers?: string[] }> })?.at?.[0]?.containers?.[0] ?? 'unknown',
           };
@@ -106,43 +130,36 @@ export function observeResources(onMetric: (metric: PerformanceMetric) => void):
           const name = entry.name.includes('//') ? entry.name.split('/')[2]?.split('/')[0] || entry.name : entry.name;
           const key = `${domain}:${name}`;
           if (!groupByName.has(key)) groupByName.set(key, []);
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          groupByName.get(key)!.push(entry);
+          groupByName.get(key)?.push(entry);
         });
 
         groupByName.forEach((entries, key) => {
           const totalLoad = entries.reduce((sum: number, e: PerformanceResourceTiming) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const anyE = e as any;
-            return sum + (anyE.loadEnd || anyE.responseEnd) - e.startTime;
+            return (
+              sum + ((e as PerformanceResourceTiming & { loadEnd?: number }).loadEnd || e.responseEnd) - e.startTime
+            );
           }, 0);
           const totalSize = entries.reduce((sum, e) => sum + (e.transferSize || 0), 0);
           const avgConnect =
             entries.reduce((sum, e) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const anyE = e as any;
-              return sum + (anyE.connectEnd || 0) - (anyE.connectStart || 0);
+              return sum + (e.connectEnd || 0) - (e.connectStart || 0);
             }, 0) / entries.length;
           const avgDns =
             entries.reduce((sum, e) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const anyE = e as any;
-              return sum + ((anyE.domainLookupEnd || 0) - (anyE.domainLookupStart || 0));
+              return sum + ((e.domainLookupEnd || 0) - (e.domainLookupStart || 0));
             }, 0) / entries.length;
           const avgTtfb =
             entries.reduce((sum, e) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const anyE = e as any;
-              return sum + (anyE.responseStart || 0) - (anyE.requestStart || 0);
+              return sum + (e.responseStart || 0) - (e.requestStart || 0);
             }, 0) / entries.length;
           const avgResponse =
             entries.reduce((sum, e) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const anyE = e as any;
-              return sum + (anyE.responseEnd || 0) - (anyE.responseStart || 0);
+              return sum + (e.responseEnd || 0) - (e.responseStart || 0);
             }, 0) / entries.length;
 
           const rating = totalLoad > 5000 ? 'poor' : totalLoad > 2000 ? 'needs-improvement' : 'good';
+          const navEntry = performance.getEntriesByType('navigation')[0] as
+            PerformanceNavigationTimingWithType | undefined;
 
           const metric: PerformanceMetric = {
             type: `resource:${type}`,
@@ -151,8 +168,7 @@ export function observeResources(onMetric: (metric: PerformanceMetric) => void):
             rating,
             delta: totalLoad,
             id: `res-${key}-${Math.random().toString(36).slice(2, 8)}`,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigationType: (performance as any).navigation?.type ? 'navigate' : 'reload',
+            navigationType: navEntry?.type === 'navigate' ? 'navigate' : 'reload',
             page: window.location.pathname,
             deviceType: getDeviceType(),
             userAgent: navigator.userAgent,

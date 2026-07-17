@@ -62,6 +62,13 @@
 9. **[x] Git push** — все изменения запушены в origin (GitHub) и gitverse.
 10. **[x] Full validation** — 881/881 тестов, lint 0 ошибок, TypeScript 0 ошибок, build succeeds.
 
+## План из 10 пунктов (2026-07-17) — сессия 3
+
+1. **[x] Remove empty `src/config/` directory** — удалена пустая директория-заглушка.
+2. **[x] Performance monitor type safety** — убраны все `(as any)` casts в `performance-monitor.ts` (8 штук). Добавлены локальные типы для Network Information API и Performance Navigation Timing. Заменён `eslint-disable` non-null assertion на optional chaining.
+3. **[x] Health endpoint hardening** — скрыты sensitive данные из `/api/health`: `process.pid`, `process.version`, `process.platform`, `process.arch`, `rss`, `external`, `arrayBuffers`, `redisMetrics`. Оставлены только безопасные: heap pressure, uptime, db status, redis status.
+4. **[x] Theme-init-script comment** — добавлен пояснительный комментарий к silent catch в `theme-init-script.tsx`.
+
 ---
 
 ## Сводка текущего состояния
@@ -582,7 +589,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-16 (N+1 query fixes, db-users decomposition, web-vitals hardening) |
+| Последнее обновление | 2026-07-17 (performance monitor type safety, health endpoint hardening, cleanup) |
 
 ### Выполненные пункты плана
 
