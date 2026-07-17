@@ -12,6 +12,6 @@ export async function GET() {
       },
     });
   } catch {
-    return NextResponse.json({ error: 'Failed to load API spec' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to load API spec' }, { status: 500 });
   }
 }

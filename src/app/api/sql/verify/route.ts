@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger';
 import { auth } from '@/lib/auth-internal';
 import type { MongoSchema } from '@/lib/mongodb-engine';
 import { sqlVerifySchema } from '@/lib/sql-schema';
+import { validateTrainingSqlDdlOnly } from '@/lib/sql-safety';
 
 function normalizeValue(val: unknown): string {
   if (val === null || val === undefined) return 'NULL';
@@ -66,6 +67,16 @@ export async function POST(request: NextRequest) {
     if ('response' in parsed) return parsed.response;
 
     const { sql, taskId, dbType } = parsed.data;
+
+    // Block destructive DDL (DROP/CREATE/ALTER/TRUNCATE) even in verify mode.
+    // DML (INSERT/UPDATE/DELETE) is allowed for tasks that require it.
+    const ddlBlockReason = validateTrainingSqlDdlOnly(sql);
+    if (ddlBlockReason) {
+      return NextResponse.json(
+        { success: false, verified: false, userRowCount: 0, expectedRowCount: 0, message: ddlBlockReason },
+        { status: 403 },
+      );
+    }
 
     const task = getTaskById(taskId);
     if (!task) {

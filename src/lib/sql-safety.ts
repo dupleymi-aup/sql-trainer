@@ -163,3 +163,52 @@ export function validateTrainingSql(sql: string): string | null {
 
   return null;
 }
+
+/**
+ * DDL-only prefixes blocked in verify mode.
+ * DML (INSERT/UPDATE/DELETE) is allowed here because some training tasks require it.
+ */
+const DDL_BLOCKED_PREFIXES = [
+  'DROP',
+  'ALTER',
+  'TRUNCATE',
+  'CREATE',
+  'RENAME',
+  'ATTACH',
+  'DETACH',
+  'LOAD',
+  'GRANT',
+  'REVOKE',
+  'PRAGMA writable_schema',
+] as const;
+
+/**
+ * Validate SQL for DDL safety in verify mode.
+ * Blocks destructive DDL (DROP/CREATE/ALTER/TRUNCATE) while allowing DML
+ * that some training tasks require (INSERT/UPDATE/DELETE).
+ * Returns null if valid, or an error message string if blocked.
+ */
+export function validateTrainingSqlDdlOnly(sql: string): string | null {
+  if (sql.length > 10000) {
+    return 'SQL query too long (max 10000 characters)';
+  }
+
+  const statementTypes = extractStatementTypes(sql);
+
+  for (const stmt of statementTypes) {
+    for (const blocked of DDL_BLOCKED_PREFIXES) {
+      if (stmt === blocked || stmt.startsWith(blocked + ' ')) {
+        return `Request contains blocked DDL command (${stmt}). Destructive schema changes are not allowed.`;
+      }
+    }
+
+    if (stmt === 'PRAGMA') {
+      if (/\bPRAGMA\s+writable_schema\b/i.test(sql)) {
+        return `Request contains blocked command (PRAGMA writable_schema).`;
+      }
+      continue;
+    }
+  }
+
+  return null;
+}
