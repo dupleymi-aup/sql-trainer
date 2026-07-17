@@ -108,8 +108,9 @@ describe('performance-export', () => {
   describe('generateExportFilename', () => {
     it('generates CSV filename', () => {
       const filename = generateExportFilename('csv');
+      const today = new Date().toISOString().slice(0, 10);
       expect(filename).toMatch(/^web-vitals-report-/);
-      expect(filename).toMatch(/2026-07-16$/);
+      expect(filename).toMatch(new RegExp(`${today}$`));
     });
 
     it('generates JSON filename', () => {
