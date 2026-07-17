@@ -127,7 +127,8 @@ export async function exportPerformanceData(data: PerformanceData, options: { fo
       mimeType = 'text/csv';
   }
 
-  const filename = `${generateExportFilename(format)}.csv`;
+  const ext = format === 'csv' ? 'csv' : format === 'json' ? 'json' : 'pdf';
+  const filename = `${generateExportFilename(format)}.${ext}`;
   downloadFile(content, filename, mimeType);
 
   return { success: true, filename };
