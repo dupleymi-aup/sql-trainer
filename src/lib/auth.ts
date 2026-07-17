@@ -7,12 +7,10 @@
  * - auth-internal.ts: Full config with DB access (used by API routes)
  */
 import NextAuth from 'next-auth';
-import type { JWT } from 'next-auth/jwt';
 import type { UserRole } from '@/lib/db-users';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
-// Minimal config for Edge runtime (proxy)
-const nextAuthConfig = {
+export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -35,13 +33,15 @@ const nextAuthConfig = {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
-        token.phone = user.phone ?? null;
-        token.role = user.role;
-        token.role_changed_at = user.role_changed_at;
+        const u = user as unknown as Record<string, unknown>;
+        token.phone = u.phone ?? null;
+        token.role = u.role as UserRole | undefined;
+        token.role_changed_at = u.role_changed_at as number | undefined;
       }
       if (trigger === 'update' && session) {
-        token.name = session.name ?? token.name;
-        token.phone = session.phone ?? token.phone;
+        const s = session as unknown as Record<string, unknown>;
+        token.name = (s.name as string) ?? token.name;
+        token.phone = s.phone ?? token.phone;
       }
       return token;
     },
@@ -53,7 +53,7 @@ const nextAuthConfig = {
         const currentRole = token.role as UserRole | undefined;
 
         if (currentRole) {
-          session.user.id = token.id;
+          session.user.id = token.id as string;
           session.user.name = token.name as string;
           session.user.email = token.email as string;
           session.user.phone = token.phone as string | null;
@@ -67,9 +67,5 @@ const nextAuthConfig = {
     strategy: 'jwt' as const,
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-};
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  ...nextAuthConfig,
   secret: process.env.AUTH_SECRET,
 });

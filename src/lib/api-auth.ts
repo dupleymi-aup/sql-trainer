@@ -5,7 +5,6 @@
 import { auth } from '@/lib/auth-internal';
 import { NextResponse } from 'next/server';
 import type { Session } from 'next-auth';
-import type { UserRole } from '@/lib/db-users';
 import { hasRole } from '@/lib/rbac';
 import { rateLimit, type RateLimitResult } from '@/lib/rate-limit';
 import { logger } from '@/lib/logger';
