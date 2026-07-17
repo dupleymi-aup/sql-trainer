@@ -9,7 +9,9 @@ services:
       - NODE_ENV=production
       - DATABASE_PATH=/app/data/users.db
       # NextAuth variables — configure via .env or docker-compose.override.yml
-      - AUTH_SECRET=${AUTH_SECRET:-changeme-in-production}
+      # SECURITY: You MUST set AUTH_SECRET to a strong random value in production!
+      # Generate with: openssl rand -base64 32
+      - AUTH_SECRET=${AUTH_SECRET:?AUTH_SECRET must be set — generate with: openssl rand -base64 32}
       - NEXTAUTH_URL=http://localhost:3000
     volumes:
       - sqlite-data:/app/data

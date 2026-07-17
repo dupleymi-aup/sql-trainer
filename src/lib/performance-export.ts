@@ -77,10 +77,7 @@ export function exportToJSON(data: PerformanceData): string {
       totalSessions: data.webVitals.reduce((sum: number, s: PerformanceStats) => sum + s.count, 0),
       avgLcp: data.webVitals.find((s: PerformanceStats) => s.metricName === 'LCP')?.avg || 0,
       avgInp: data.webVitals.find((s: PerformanceStats) => s.metricName === 'INP')?.avg || 0,
-      totalErrors: data.errors.reduce(
-        (sum: number, e: import('@/components/admin/extended-performance-dashboard').ErrorStat) => sum + e.count,
-        0,
-      ),
+      totalErrors: data.errors.reduce((sum: number, e: ErrorStat) => sum + e.count, 0),
     },
     metrics: data.webVitals,
     longTasks: data.longTasks,

@@ -177,12 +177,6 @@ export function observeResources(onMetric: (metric: PerformanceMetric) => void):
 
 // ============ PERFORMANCE MARKS/METRICS ============
 
-export interface PerformanceMarkOptions {
-  name: string;
-  page?: string;
-  metadata?: Record<string, unknown>;
-}
-
 export function mark(name: string, metadata?: Record<string, unknown>): void {
   try {
     performance.mark(name, { detail: metadata });

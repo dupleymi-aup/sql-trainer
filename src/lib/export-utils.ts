@@ -2,6 +2,8 @@
  * Utility functions for exporting analytics data to CSV and Excel formats.
  */
 
+import { escapeHtml } from '@/lib/html-utils';
+
 export interface ExportColumn {
   key: string;
   label: string;
@@ -38,14 +40,6 @@ export function exportToCSV(data: Record<string, unknown>[], columns: ExportColu
 
 export function exportToExcel(data: Record<string, unknown>[], columns: ExportColumn[], filename: string): void {
   if (!data?.length) return;
-
-  const escapeHtml = (str: string): string =>
-    str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
 
   const headerRow = columns
     .map((col) => `<th style="background:#2563eb;color:white;font-weight:bold;">${escapeHtml(col.label)}</th>`)
