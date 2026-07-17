@@ -6,7 +6,7 @@ import type { ProgressiveHint } from '@/lib/progressive-hints';
 
 export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 export type DbType = 'sqlite' | 'postgresql' | 'clickhouse' | 'mongodb' | 'mysql' | 'mssql' | 'oracle';
-export type TaskCategory = 'company' | 'shop' | 'analytics' | 'exam';
+export type TaskCategory = 'company' | 'shop' | 'analytics' | 'exam' | 'json';
 
 export interface TrainingTask {
   id: string;

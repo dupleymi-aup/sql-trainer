@@ -56,12 +56,14 @@ const nextAuth = NextAuth({
     },
     async session({ session, token }) {
       if (token) {
-        const tokenRoleChangedAt = token.role_changed_at;
-        const currentRole = token.role;
+        const tokenRoleChangedAt = token.role_changed_at as number | null | undefined;
+        const currentRole = token.role as import('@/lib/db-users').UserRole | undefined;
 
         if (currentRole) {
           const db = (await import('@/lib/db-users')).getDb();
-          const dbUser = db.prepare('SELECT role, role_changed_at, banned_at FROM users WHERE id = ?').get(token.id) as
+          const dbUser = db
+            .prepare('SELECT role, role_changed_at, banned_at FROM users WHERE id = ?')
+            .get(token.id as string) as
             { role: string; role_changed_at: number | null; banned_at: number | null } | undefined;
 
           if (dbUser && dbUser.banned_at) {
@@ -82,7 +84,7 @@ const nextAuth = NextAuth({
             return session;
           }
 
-          session.user.id = token.id;
+          session.user.id = token.id as string;
           session.user.name = token.name as string;
           session.user.email = token.email as string;
           session.user.phone = token.phone as string | null;

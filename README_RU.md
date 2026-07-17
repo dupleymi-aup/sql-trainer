@@ -247,10 +247,75 @@ sql-trainer/
 - [x] Темы оформления (светлая/тёмная)
 - [x] Справка по SQL-операторам
 - [x] Визуализация результатов (графики)
+- [x] Деплой на Amvera Cloud
 - [ ] Мультиязычность (полная поддержка EN/RU)
 - [ ] Дополнительные обучающие модули
 - [ ] Интеграция с внешними LMS
 - [ ] PWA-манифест для офлайн-работы
+
+---
+
+## Деплой на Amvera Cloud
+
+Проект готов к развёртыванию на [Amvera Cloud](https://amvera.ru) — российской облачной платформе с GitOps-деплоем и поддержкой Docker.
+
+### Способ 1: Git push (рекомендуемый)
+
+1. **Создайте проект** на Amvera:
+   - Зарегистрируйтесь на [amvera.ru](https://amvera.ru)
+   - Создайте новый проект, выберите тип "Docker"
+   - Получите URL Git-репозитория (вкладка Settings → Git)
+
+2. **Добавьте remote и отправьте код:**
+   ```bash
+   git remote add amvera https://git.amvera.io/<ваш-namespace>/sql-trainer.git
+   npm run deploy:amvera:git
+   ```
+
+3. **Настройте переменные окружения** в Amvera Control Panel → Settings → Environment Variables:
+
+   | Переменная | Обязательно | Описание |
+   |---|---|---|
+   | `AUTH_SECRET` | ✅ | Секретный ключ. Сгенерируйте: `openssl rand -base64 32` |
+   | `NEXTAUTH_URL` | ✅ | URL проекта: `https://<ваш-домен>.amvera.io` |
+   | `DATABASE_PATH` | ✅ | `/app/data/users.db` (на persistent volume) |
+   | `SMTP_HOST` | — | SMTP-сервер для email-уведомлений |
+   | `SMTP_PORT` | — | Порт SMTP (обычно 587) |
+   | `SMTP_USER` | — | Пользователь SMTP |
+   | `SMTP_PASS` | — | Пароль SMTP |
+   | `SMTP_FROM` | — | Отправитель: `SQL Trainer <noreply@example.com>` |
+   | `VAPID_PUBLIC_KEY` | — | Публичный ключ для push-уведомлений |
+   | `VAPID_PRIVATE_KEY` | — | Приватный ключ для push-уведомлений |
+   | `VAPID_SUBJECT` | — | `mailto:your-email@example.com` |
+   | `REDIS_URL` | — | Redis для distributed rate limiting (опционально) |
+
+4. **Amvera автоматически соберёт и запустит** проект. Persistent-хранилище монтируется в `/app/data` — SQLite-база данных сохраняется между перезапусками.
+
+### Способ 2: Docker registry push
+
+```bash
+# Установите namespace
+export AMVERA_NAMESPACE=your-namespace
+
+# Соберите и отправьте образ
+npm run deploy:amvera
+```
+
+### Локальная сборка для тестирования
+
+```bash
+npm run deploy:amvera:local
+
+# Запуск
+docker run --rm -p 3000:3000 \
+  -e AUTH_SECRET=test-secret-key-at-least-32-chars-long \
+  -e NEXTAUTH_URL=http://localhost:3000 \
+  sql-trainer:latest
+```
+
+### Рекомендуемый тариф
+
+Для production-нагрузки рекомендуется тариф **«Начальный плюс»** (1 ГБ ОЗУ, 0.5 vCPU) или выше. Тариф «Начальный» (0.5 ГБ ОЗУ) подходит для тестирования.
 
 ---
 

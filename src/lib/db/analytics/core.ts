@@ -4,8 +4,6 @@ import { type TimeRangeFilters } from '../types';
 import { TRAINING_TASKS } from '../../training-tasks';
 import { logger } from '../../logger';
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 // ==================== Database Stats ====================
 
 export interface DBStats {

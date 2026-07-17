@@ -4,6 +4,7 @@
 # ============================================
 # Usage:
 #   ./scripts/deploy-amvera.sh              # Build & push to Amvera registry
+#   ./scripts/deploy-amvera.sh --git        # Deploy via git push (recommended)
 #   ./scripts/deploy-amvera.sh --local      # Build locally only (for testing)
 #   ./scripts/deploy-amvera.sh --cleanup    # Remove old images
 # ============================================
@@ -15,6 +16,7 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 IMAGE_NAME="sql-trainer"
 REGISTRY="${AMVERA_REGISTRY:-registry.amvera.io}"
 NAMESPACE="${AMVERA_NAMESPACE:-}"
+AMVERA_REMOTE="${AMVERA_REMOTE:-amvera}"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,11 +31,13 @@ err()  { echo -e "${RED}[deploy]${NC} $*" >&2; }
 MODE="push"
 for arg in "$@"; do
   case "$arg" in
+    --git)     MODE="git" ;;
     --local)   MODE="local" ;;
     --cleanup) MODE="cleanup" ;;
     --help|-h)
-      echo "Usage: $0 [--local|--cleanup]"
+      echo "Usage: $0 [--git|--local|--cleanup]"
       echo "  (no args)  Build and push to Amvera registry"
+      echo "  --git      Deploy via git push to Amvera remote (recommended)"
       echo "  --local    Build locally only (for testing)"
       echo "  --cleanup  Remove old images"
       exit 0
@@ -44,7 +48,39 @@ done
 
 cd "$PROJECT_DIR"
 
-# ---- Pre-flight checks ----
+# ---- Git push mode (Amvera GitOps) ----
+if [[ "$MODE" == "git" ]]; then
+  log "Deploying via git push to Amvera..."
+
+  # Check if amvera remote exists
+  if ! git remote get-url "$AMVERA_REMOTE" &>/dev/null; then
+    err "Amvera git remote '$AMVERA_REMOTE' is not configured."
+    echo ""
+    echo "Add it with:"
+    echo "  git remote add amvera https://git.amvera.io/<namespace>/<project>.git"
+    echo ""
+    echo "Find your repo URL in Amvera Control Panel → Project → Settings → Git"
+    exit 1
+  fi
+
+  # Ensure we're on main/master
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  log "Pushing branch '$BRANCH' to $AMVERA_REMOTE..."
+
+  git push "$AMVERA_REMOTE" "$BRANCH"
+
+  log ""
+  log "Git push complete! Amvera will build and deploy automatically."
+  log "Monitor the build at: Amvera Control Panel → Project → Builds"
+  log ""
+  log "Required environment variables (set in Amvera Control Panel → Settings):"
+  log "  AUTH_SECRET    = <generate: openssl rand -base64 32>"
+  log "  NEXTAUTH_URL   = https://<your-amvera-domain>"
+  log "  DATABASE_PATH  = /app/data/users.db"
+  exit 0
+fi
+
+# ---- Pre-flight checks for Docker modes ----
 if ! command -v docker &>/dev/null; then
   err "Docker is not installed. Install it from https://docs.docker.com/get-docker/"
   exit 1

@@ -247,10 +247,72 @@ sql-trainer/
 - [x] Themes (light/dark)
 - [x] SQL operators reference
 - [x] Result visualization (charts)
+- [x] Amvera Cloud deployment
 - [ ] Full multilingual support (EN/RU)
 - [ ] Additional training modules
 - [ ] LMS integration
 - [ ] PWA manifest for offline mode
+
+---
+
+## Amvera Cloud Deployment
+
+The project is ready for deployment on [Amvera Cloud](https://amvera.ru) — a Russian cloud platform with GitOps deployment and Docker support.
+
+### Method 1: Git push (recommended)
+
+1. **Create a project** on Amvera:
+   - Register at [amvera.ru](https://amvera.ru)
+   - Create a new project, select "Docker" type
+   - Get the Git repository URL (Settings → Git tab)
+
+2. **Add remote and push:**
+   ```bash
+   git remote add amvera https://git.amvera.io/<your-namespace>/sql-trainer.git
+   npm run deploy:amvera:git
+   ```
+
+3. **Configure environment variables** in Amvera Control Panel → Settings → Environment Variables:
+
+   | Variable | Required | Description |
+   |---|---|---|
+   | `AUTH_SECRET` | ✅ | Secret key. Generate: `openssl rand -base64 32` |
+   | `NEXTAUTH_URL` | ✅ | Project URL: `https://<your-domain>.amvera.io` |
+   | `DATABASE_PATH` | ✅ | `/app/data/users.db` (on persistent volume) |
+   | `SMTP_HOST` | — | SMTP server for email notifications |
+   | `SMTP_PORT` | — | SMTP port (usually 587) |
+   | `SMTP_USER` | — | SMTP user |
+   | `SMTP_PASS` | — | SMTP password |
+   | `SMTP_FROM` | — | Sender: `SQL Trainer <noreply@example.com>` |
+   | `VAPID_PUBLIC_KEY` | — | Public key for push notifications |
+   | `VAPID_PRIVATE_KEY` | — | Private key for push notifications |
+   | `VAPID_SUBJECT` | — | `mailto:your-email@example.com` |
+   | `REDIS_URL` | — | Redis for distributed rate limiting (optional) |
+
+4. **Amvera will automatically build and deploy** the project. Persistent storage is mounted at `/app/data` — SQLite database is preserved between restarts.
+
+### Method 2: Docker registry push
+
+```bash
+export AMVERA_NAMESPACE=your-namespace
+npm run deploy:amvera
+```
+
+### Local build for testing
+
+```bash
+npm run deploy:amvera:local
+
+# Run
+docker run --rm -p 3000:3000 \
+  -e AUTH_SECRET=test-secret-key-at-least-32-chars-long \
+  -e NEXTAUTH_URL=http://localhost:3000 \
+  sql-trainer:latest
+```
+
+### Recommended plan
+
+For production workloads, the **"Start+"** plan (1 GB RAM, 0.5 vCPU) or higher is recommended. The "Start" plan (0.5 GB RAM) is suitable for testing.
 
 ---
 

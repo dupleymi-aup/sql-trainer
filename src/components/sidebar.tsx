@@ -41,6 +41,7 @@ const CATEGORY_LABELS: Record<TaskCategory | 'base', string> = {
   shop: 'category.shop',
   analytics: 'category.analytics',
   exam: 'category.exam',
+  json: 'category.json',
 };
 
 function categoryLabel(cat: TaskCategory | 'base'): string {
@@ -53,6 +54,7 @@ const CATEGORY_COLORS: Record<TaskCategory | 'base', string> = {
   shop: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
   analytics: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   exam: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+  json: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-400',
 };
 
 type CategoryKey = TaskCategory | 'base';
@@ -150,9 +152,9 @@ export default function Sidebar() {
   // Group tasks by difficulty, then by category
   const tasksByDifficultyAndCategory = useMemo(() => {
     const map: Record<Difficulty, Record<CategoryKey, TrainingTask[]>> = {
-      beginner: { base: [], company: [], shop: [], analytics: [], exam: [] },
-      intermediate: { base: [], company: [], shop: [], analytics: [], exam: [] },
-      advanced: { base: [], company: [], shop: [], analytics: [], exam: [] },
+      beginner: { base: [], company: [], shop: [], analytics: [], exam: [], json: [] },
+      intermediate: { base: [], company: [], shop: [], analytics: [], exam: [], json: [] },
+      advanced: { base: [], company: [], shop: [], analytics: [], exam: [], json: [] },
     };
     const query = searchQuery.toLowerCase().trim();
     TRAINING_TASKS.forEach((task) => {

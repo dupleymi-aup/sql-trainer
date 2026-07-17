@@ -9,3 +9,12 @@ build:
 run:
   containerPort: 3000
   persistenceMount: /app/data
+  # Environment variables — set via Amvera Control Panel or .env.amvera
+  # Required:
+  #   AUTH_SECRET    — generate with: openssl rand -base64 32
+  #   NEXTAUTH_URL   — https://<your-amvera-domain>
+  # Optional:
+  #   DATABASE_PATH  — defaults to /app/data/users.db (persistent volume)
+  #   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASS — for email notifications
+  #   VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT — for push notifications
+  #   REDIS_URL — for distributed rate limiting (falls back to in-memory)
