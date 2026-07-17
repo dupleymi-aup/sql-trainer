@@ -17,7 +17,29 @@ interface ExtendedPerformanceMetric {
   page: string;
   deviceType: string;
   userAgent: string;
-  [key: string]: unknown;
+  // Long task properties
+  containers?: string;
+  // Resource timing properties
+  count?: number;
+  totalLoadMs?: number;
+  totalSizeBytes?: number;
+  avgConnectMs?: number;
+  avgDnsMs?: number;
+  avgTtfbMs?: number;
+  avgResponseMs?: number;
+  // Error properties
+  errorMessage?: string;
+  errorStack?: string;
+  errorFile?: string;
+  errorLine?: number;
+  errorColumn?: number;
+  // SQL query properties
+  queryType?: string;
+  rowsReturned?: number;
+  hasError?: boolean;
+  dbType?: string;
+  taskId?: string;
+  userId?: string;
 }
 
 export async function POST(request: Request) {
@@ -87,7 +109,7 @@ function persistLongTask(db: ReturnType<typeof getDb>, metric: ExtendedPerforman
     metric.page,
     metric.deviceType,
     metric.userAgent || null,
-    (metric as Record<string, unknown>).containers || 'unknown',
+    metric.containers || 'unknown',
     Date.now(),
   );
 }
@@ -107,13 +129,13 @@ function persistResource(db: ReturnType<typeof getDb>, metric: ExtendedPerforman
     metric.page,
     metric.deviceType,
     metric.userAgent || null,
-    (metric as Record<string, unknown>).count || 1,
-    (metric as Record<string, unknown>).totalLoadMs || metric.value,
-    (metric as Record<string, unknown>).totalSizeBytes || 0,
-    (metric as Record<string, unknown>).avgConnectMs || 0,
-    (metric as Record<string, unknown>).avgDnsMs || 0,
-    (metric as Record<string, unknown>).avgTtfbMs || 0,
-    (metric as Record<string, unknown>).avgResponseMs || 0,
+    metric.count || 1,
+    metric.totalLoadMs || metric.value,
+    metric.totalSizeBytes || 0,
+    metric.avgConnectMs || 0,
+    metric.avgDnsMs || 0,
+    metric.avgTtfbMs || 0,
+    metric.avgResponseMs || 0,
     Date.now(),
   );
 }
@@ -124,12 +146,12 @@ function persistError(db: ReturnType<typeof getDb>, metric: ExtendedPerformanceM
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     metric.id,
-    (metric as Record<string, unknown>).type || 'error',
-    (metric as Record<string, unknown>).errorMessage || '',
-    (metric as Record<string, unknown>).errorStack || null,
-    (metric as Record<string, unknown>).errorFile || null,
-    (metric as Record<string, unknown>).errorLine || null,
-    (metric as Record<string, unknown>).errorColumn || null,
+    metric.type || 'error',
+    metric.errorMessage || '',
+    metric.errorStack || null,
+    metric.errorFile || null,
+    metric.errorLine || null,
+    metric.errorColumn || null,
     metric.page,
     metric.deviceType,
     metric.userAgent || null,
@@ -144,14 +166,14 @@ function persistSqlQuery(db: ReturnType<typeof getDb>, metric: ExtendedPerforman
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     metric.id,
-    (metric as Record<string, unknown>).queryType || 'unknown',
+    metric.queryType || 'unknown',
     metric.value,
-    (metric as Record<string, unknown>).rowsReturned || 0,
-    (metric as Record<string, unknown>).hasError ? 1 : 0,
-    (metric as Record<string, unknown>).errorMessage || null,
-    (metric as Record<string, unknown>).dbType || 'unknown',
-    (metric as Record<string, unknown>).taskId || null,
-    (metric as Record<string, unknown>).userId || null,
+    metric.rowsReturned || 0,
+    metric.hasError ? 1 : 0,
+    metric.errorMessage || null,
+    metric.dbType || 'unknown',
+    metric.taskId || null,
+    metric.userId || null,
     Date.now(),
   );
 }

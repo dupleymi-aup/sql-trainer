@@ -15,8 +15,8 @@ export {
   createResetCode,
   verifyResetCode,
   getLoginLockStatus,
+  logAudit,
 } from './db/users';
-export { logAudit } from './db/users';
 export {
   saveUserProgress,
   getUserProgress,

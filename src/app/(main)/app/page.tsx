@@ -13,6 +13,7 @@ import { getNextHintLevel, generateProgressiveHints, calculateHintPenalty } from
 import { logger } from '@/lib/logger';
 import { WidgetErrorBoundary } from '@/components/widget-error-boundary';
 import { useQueryExecutor } from '@/hooks/use-query-executor';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import { TimerDisplay } from '@/components/timer-display';
 import ResultsTable from '@/components/results-table';
 import ActionBar from '@/components/action-bar';
@@ -212,76 +213,12 @@ export default function HomePage() {
   }, [currentTask, dbType]);
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        executeQuery();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        setEditorContent('');
-        setLastResult(null);
-        setVerification(null);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
-        e.preventDefault();
-        const nextLevel = getNextHintLevel(hintLevel);
-        if (nextLevel !== null && currentTask) {
-          setHintLevel(nextLevel);
-          const hints = generateProgressiveHints(
-            currentTask.id,
-            currentTask.hint,
-            currentTask.taskText,
-            currentTask.progressiveHints,
-          );
-          setTotalHintPenalty(calculateHintPenalty(hints, nextLevel));
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
-        e.preventDefault();
-        setSolutionVisible(!solutionVisible);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
-        e.preventDefault();
-        setEditorContent(formatSQL(editorContent));
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        setSidebarOpen(!sidebarOpen);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
-        e.preventDefault();
-        if (currentTaskId) toggleBookmark(currentTaskId);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
-        e.preventDefault();
-        executeQuery();
-        if (currentTaskId) executeVerify?.();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'X') {
-        e.preventDefault();
-        const { clearHistory } = useSQLTrainerStore.getState();
-        if (window.confirm(t('action.clearHistoryConfirm', { default: 'Clear query history?' }))) {
-          clearHistory();
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
-        e.preventDefault();
-        const cycle: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
-        const idx = cycle.indexOf((theme as 'light' | 'dark' | 'system') || 'system');
-        const next = cycle[(idx + 1) % cycle.length];
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('next-theme', next);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
+  useKeyboardShortcuts({
     executeQuery,
+    executeVerify,
     hintLevel,
-    solutionVisible,
     setHintLevel,
+    solutionVisible,
     setSolutionVisible,
     setEditorContent,
     setLastResult,
@@ -294,8 +231,7 @@ export default function HomePage() {
     theme,
     toggleBookmark,
     currentTaskId,
-    executeVerify,
-  ]);
+  });
 
   // Clear editor
   const clearEditor = () => {

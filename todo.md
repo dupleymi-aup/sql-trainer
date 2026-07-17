@@ -69,6 +69,13 @@
 3. **[x] Health endpoint hardening** — скрыты sensitive данные из `/api/health`: `process.pid`, `process.version`, `process.platform`, `process.arch`, `rss`, `external`, `arrayBuffers`, `redisMetrics`. Оставлены только безопасные: heap pressure, uptime, db status, redis status.
 4. **[x] Theme-init-script comment** — добавлен пояснительный комментарий к silent catch в `theme-init-script.tsx`.
 
+## План из 10 пунктов (2026-07-17) — сессия 4
+
+1. **[x] `.env.example` completeness** — добавлены переменные `LOG_LEVEL` и `ANALYZE` в `.env.example` с описаниями.
+2. **[x] db-users.ts cleanup** — объединён дублирующий `export { logAudit }` с основным блоком экспорта.
+3. **[x] Performance route type safety** — расширен `ExtendedPerformanceMetric` интерфейс 19 опциональными свойствами, удалены все 21 `as Record<string, unknown>` кастов в `performance/route.ts`.
+4. **[x] Keyboard shortcuts hook** — извлечены 84 строки клавиатурных шорткатов из `app/page.tsx` в переиспользуемый хук `use-keyboard-shortcuts.ts`. Уменьшен размер страницы на ~80 строк.
+
 ---
 
 ## Сводка текущего состояния
@@ -589,7 +596,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-17 (performance monitor type safety, health endpoint hardening, cleanup) |
+| Последнее обновление | 2026-07-17 (keyboard shortcuts hook, performance route types, env.example cleanup) |
 
 ### Выполненные пункты плана
 
