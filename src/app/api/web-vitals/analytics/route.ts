@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
-import { auth } from '@/lib/auth-internal';
+import { withAdminAuth } from '@/lib/api-auth';
 import { apiServerError } from '@/lib/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +24,8 @@ interface DailyMetric {
   count: number;
 }
 
-export async function GET(request: Request) {
+export const GET = withAdminAuth(async ({ request }) => {
   try {
-    const session = await auth();
-    if (!session?.user?.role || !['admin', 'teacher'].includes(session.user.role)) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const metric = searchParams.get('metric') || 'LCP';
     const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
@@ -138,7 +133,6 @@ export async function GET(request: Request) {
     }>;
 
     return NextResponse.json({
-      success: true,
       stats,
       trend: trend.reverse(),
       worstPages,
@@ -148,4 +142,4 @@ export async function GET(request: Request) {
   } catch (err) {
     return apiServerError('WebVitals Analytics GET', undefined, err);
   }
-}
+});

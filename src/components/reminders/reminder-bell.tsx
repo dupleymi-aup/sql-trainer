@@ -6,7 +6,7 @@ import { Bell } from 'lucide-react';
 import { t } from '@/lib/i18n';
 import { formatDateDisplay } from '@/lib/date-utils';
 import { toast } from 'sonner';
-import { PendingReminder } from '@/lib/db-users';
+import { PendingReminder } from '@/lib/db/analytics';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';

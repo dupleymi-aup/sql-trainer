@@ -91,6 +91,13 @@
 4. **[x] Landing page fixes** — добавлен `aria-label="Close menu"` на кнопку закрытия мобильного меню, 5 placeholder ссылок `href="#"` заменены на `<span>` (не ведут никуда).
 5. **[x] Accessibility improvements** — добавлены `aria-label` на 5 icon-only кнопок: sql-reference insert, analytics-card refresh (x2), group-management clear search, welcome-panel task button.
 
+## План из 10 пунктов (2026-07-17) — сессия 7
+
+1. **[x] Auth wrapper migration** — 3 маршрута с inline `auth()` + role check переведены на `withAdminAuth`: web-vitals/analytics, performance/analytics, sql-performance. Получили rate limiting, CSRF protection и success envelope бесплатно.
+2. **[x] Auth type cleanup** — удалены 4 лишних `as { user?: { id?: string } } | null` кастов из SQL маршрутов (verify, explain, init-training x2). `auth()` уже возвращает `Session | null` с правильными типами.
+3. **[x] Double assertion fix** — заменён `json as unknown as ABTestData` на `json as ABTestData` в ab-test.tsx.
+4. **[x] Barrel import cleanup** — 6 компонентов переведены с `@/lib/db-users` на прямые импорты из `@/lib/db/analytics` и `@/lib/db/types`: admin/deadline-manager, teacher/deadline-manager, admin/create-deadline-dialog, admin/user-table, reminders/reminder-toast-trigger, reminders/reminder-bell.
+
 ---
 
 ## Сводка текущего состояния
@@ -611,7 +618,7 @@
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-17 (store consolidation, MS_PER_DAY extraction, accessibility fixes) |
+| Последнее обновление | 2026-07-17 (auth wrapper migration, type cleanup, barrel imports) |
 
 ### Выполненные пункты плана
 

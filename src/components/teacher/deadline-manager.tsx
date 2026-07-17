@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
-import { Deadline } from '@/lib/db-users';
+import { Deadline } from '@/lib/db/analytics';
 import { formatDateDisplayWithYear } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

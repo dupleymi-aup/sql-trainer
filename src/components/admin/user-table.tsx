@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StudentAcademicProfile from '@/components/admin/analytics/student-academic-profile';
-import type { UserRole } from '@/lib/db-users';
+import type { UserRole } from '@/lib/db/types';
 import {
   Users,
   Trash2,

@@ -6,7 +6,7 @@ import { safeFetch } from '@/lib/safe-fetch';
 import { t } from '@/lib/i18n';
 import { logger } from '@/lib/logger';
 import { formatDateDisplayWithYear } from '@/lib/date-utils';
-import { Deadline } from '@/lib/db-users';
+import { Deadline } from '@/lib/db/analytics';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

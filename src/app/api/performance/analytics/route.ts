@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
-import { auth } from '@/lib/auth-internal';
+import { withAdminAuth } from '@/lib/api-auth';
 import { apiServerError } from '@/lib/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -24,13 +24,16 @@ interface DailyMetric {
   count: number;
 }
 
-export async function GET(request: Request) {
-  try {
-    const session = await auth();
-    if (!session?.user?.role || !['admin', 'teacher'].includes(session.user.role)) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+interface ErrorStat {
+  error_type: string;
+  message: string;
+  page: string;
+  count: number;
+  worst: number;
+}
 
+export const GET = withAdminAuth(async ({ request }) => {
+  try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'longtask';
     const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
@@ -41,7 +44,6 @@ export async function GET(request: Request) {
 
     switch (type) {
       case 'longtask': {
-        // SQLite-compatible percentiles via sorted subqueries
         const stats = db
           .prepare(
             `
@@ -92,7 +94,6 @@ export async function GET(request: Request) {
           .all(cutoffDate, page, days) as DailyMetric[];
 
         return NextResponse.json({
-          success: true,
           stats,
           trend: trend.reverse(),
           period: { type, days, page },
@@ -129,7 +130,6 @@ export async function GET(request: Request) {
         }>;
 
         return NextResponse.json({
-          success: true,
           stats,
           period: { type, days, page },
         });
@@ -156,7 +156,6 @@ export async function GET(request: Request) {
           .all(cutoffDate, page) as ErrorStat[];
 
         return NextResponse.json({
-          success: true,
           stats,
           period: { type, days, page },
         });
@@ -168,12 +167,4 @@ export async function GET(request: Request) {
   } catch (err) {
     return apiServerError('Performance Analytics GET', undefined, err);
   }
-}
-
-interface ErrorStat {
-  error_type: string;
-  message: string;
-  page: string;
-  count: number;
-  worst: number;
-}
+});

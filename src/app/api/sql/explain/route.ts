@@ -53,7 +53,7 @@ function analyzePlan(plan: string, sql: string): string[] {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = (await auth()) as { user?: { id?: string } } | null;
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

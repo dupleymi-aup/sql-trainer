@@ -14,7 +14,7 @@ const initTrainingSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = (await auth()) as { user?: { id?: string } } | null;
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: Request) {
   try {
-    const session = (await auth()) as { user?: { id?: string } } | null;
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

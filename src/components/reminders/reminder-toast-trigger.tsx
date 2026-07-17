@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import { t } from '@/lib/i18n';
-import { PendingReminder } from '@/lib/db-users';
+import { PendingReminder } from '@/lib/db/analytics';
 import { logger } from '@/lib/logger';
 
 const typeLabels: Record<PendingReminder['type'], string> = {
