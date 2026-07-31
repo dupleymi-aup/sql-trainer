@@ -168,16 +168,25 @@ function replaceClickHouseFunctions(sql: string): string {
   // Time period functions
   result = result.replace(/\btoStartOfDay\s*\(/gi, 'DATE(');
   result = result.replace(/\btoStartOfWeek\s*\(/gi, 'DATE(');
-  result = result.replace(/\btoStartOfMonth\s*\(/gi, 'DATE(');
-  result = result.replace(/\btoStartOfQuarter\s*\(/gi, 'DATE(');
-  result = result.replace(/\btoStartOfYear\s*\(/gi, 'DATE(');
-  result = result.replace(/\btoStartOfISOYear\s*\(/gi, 'DATE(');
-  result = result.replace(/\btoISOYear\s*\(/gi, "CAST(STRFTIME('%Y', ");
+  result = replaceBalancedFunction(result, 'toStartOfMonth', (args) => `STRFTIME('%Y-%m-01', ${args[0]})`);
+  result = replaceBalancedFunction(
+    result,
+    'toStartOfQuarter',
+    (args) =>
+      `DATE(${args[0]}, 'start of year', printf('+%d months', ((CAST(STRFTIME('%m', ${args[0]}) AS INTEGER) - 1) / 3) * 3))`,
+  );
+  result = replaceBalancedFunction(result, 'toStartOfYear', (args) => `STRFTIME('%Y-01-01', ${args[0]})`);
+  result = replaceBalancedFunction(result, 'toStartOfISOYear', (args) => `STRFTIME('%Y-01-01', ${args[0]})`);
+  result = replaceBalancedFunction(result, 'toISOYear', (args) => `CAST(STRFTIME('%G', ${args[0]}) AS INTEGER)`);
 
   // Date formatting
-  result = result.replace(/\btoYYYYMM\s*\(/gi, 'STRFTIME(');
-  result = result.replace(/\btoYYYYMMDD\s*\(/gi, 'STRFTIME(');
-  result = result.replace(/\btoYYYYMMDDhhmmss\s*\(/gi, 'STRFTIME(');
+  result = replaceBalancedFunction(result, 'toYYYYMM', (args) => `CAST(STRFTIME('%Y%m', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toYYYYMMDD', (args) => `CAST(STRFTIME('%Y%m%d', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(
+    result,
+    'toYYYYMMDDhhmmss',
+    (args) => `CAST(STRFTIME('%Y%m%d%H%M%S', ${args[0]}) AS INTEGER)`,
+  );
 
   // now() and today()
   result = result.replace(/\bnow\s*\(\s*\)/gi, "DATETIME('now')");
@@ -267,66 +276,69 @@ function replaceClickHouseFunctions(sql: string): string {
   result = result.replace(/\bmatch\s*\(([^,]+),\s*([^)]+)\)/gi, 'REGEXP($1, $2)');
 
   // extract year/month/day from date
-  result = result.replace(/\btoYear\s*\(/gi, "CAST(STRFTIME('%Y', ");
-  result = result.replace(/\btoMonth\s*\(/gi, "CAST(STRFTIME('%m', ");
-  result = result.replace(/\btoDayOfMonth\s*\(/gi, "CAST(STRFTIME('%d', ");
-  result = result.replace(/\btoDayOfWeek\s*\(/gi, "CAST(STRFTIME('%w', ");
-  result = result.replace(/\btoHour\s*\(/gi, "CAST(STRFTIME('%H', ");
-  result = result.replace(/\btoMinute\s*\(/gi, "CAST(STRFTIME('%M', ");
-  result = result.replace(/\btoSecond\s*\(/gi, "CAST(STRFTIME('%S', ");
+  result = replaceBalancedFunction(result, 'toYear', (args) => `CAST(STRFTIME('%Y', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toMonth', (args) => `CAST(STRFTIME('%m', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toDayOfMonth', (args) => `CAST(STRFTIME('%d', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toDayOfWeek', (args) => `CAST(STRFTIME('%w', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toHour', (args) => `CAST(STRFTIME('%H', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toMinute', (args) => `CAST(STRFTIME('%M', ${args[0]}) AS INTEGER)`);
+  result = replaceBalancedFunction(result, 'toSecond', (args) => `CAST(STRFTIME('%S', ${args[0]}) AS INTEGER)`);
+
+  // count() with no args (ClickHouse) → COUNT(*)
+  result = result.replace(/\bcount\s*\(\s*\)/gi, 'COUNT(*)');
 
   // dateDiff
-  result = result.replace(
-    /\bdateDiff\s*\(\s*['"](\w+)['"]\s*,\s*([^,]+),\s*([^)]+)\)/gi,
-    (_match, unit, start, end) => {
-      const unitLower = unit.toLowerCase();
-      switch (unitLower) {
-        case 'second':
-        case 'seconds':
-        case 'ss':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 86400 AS INTEGER)`;
-        case 'minute':
-        case 'minutes':
-        case 'mi':
-        case 'n':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 1440 AS INTEGER)`;
-        case 'hour':
-        case 'hours':
-        case 'hh':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 24 AS INTEGER)`;
-        case 'day':
-        case 'days':
-        case 'dd':
-          return `CAST(JULIANDAY(${end}) - JULIANDAY(${start}) AS INTEGER)`;
-        case 'week':
-        case 'weeks':
-        case 'ww':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 7 AS INTEGER)`;
-        case 'month':
-        case 'months':
-        case 'mm':
-        case 'm':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 30.4375 AS INTEGER)`;
-        case 'quarter':
-        case 'quarters':
-        case 'qq':
-        case 'q':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 91.3125 AS INTEGER)`;
-        case 'year':
-        case 'years':
-        case 'yyyy':
-        case 'yy':
-          return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 365.25 AS INTEGER)`;
-        default:
-          return `CAST(JULIANDAY(${end}) - JULIANDAY(${start}) AS INTEGER)`;
-      }
-    },
-  );
+  result = replaceBalancedFunction(result, 'dateDiff', (args) => {
+    const unit = (args[0] || '').replace(/['"]/g, '').toLowerCase();
+    const start = (args[1] || '').trim();
+    const end = (args[2] || '').trim();
+    if (!start || !end) return `CAST(JULIANDAY(${end}) - JULIANDAY(${start}) AS INTEGER)`;
+    switch (unit) {
+      case 'second':
+      case 'seconds':
+      case 'ss':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 86400 AS INTEGER)`;
+      case 'minute':
+      case 'minutes':
+      case 'mi':
+      case 'n':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 1440 AS INTEGER)`;
+      case 'hour':
+      case 'hours':
+      case 'hh':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) * 24 AS INTEGER)`;
+      case 'day':
+      case 'days':
+      case 'dd':
+        return `CAST(JULIANDAY(${end}) - JULIANDAY(${start}) AS INTEGER)`;
+      case 'week':
+      case 'weeks':
+      case 'ww':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 7 AS INTEGER)`;
+      case 'month':
+      case 'months':
+      case 'mm':
+      case 'm':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 30.4375 AS INTEGER)`;
+      case 'quarter':
+      case 'quarters':
+      case 'qq':
+      case 'q':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 91.3125 AS INTEGER)`;
+      case 'year':
+      case 'years':
+      case 'yyyy':
+      case 'yy':
+        return `CAST((JULIANDAY(${end}) - JULIANDAY(${start})) / 365.25 AS INTEGER)`;
+      default:
+        return `CAST(JULIANDAY(${end}) - JULIANDAY(${start}) AS INTEGER)`;
+    }
+  });
 
   // age
   result = result.replace(
     /\bage\s*\(\s*([^)]+)\)/gi,
-    'CAST((JULIANDAY(DATE("now")) - JULIANDAY($1)) / 365.25 AS INTEGER)',
+    "CAST((JULIANDAY(DATE('now')) - JULIANDAY($1)) / 365.25 AS INTEGER)",
   );
 
   // formatDateTime
@@ -335,7 +347,10 @@ function replaceClickHouseFunctions(sql: string): string {
       .replace(/%T/g, '%H:%M:%S')
       .replace(/%F/g, '%Y-%m-%d')
       .replace(/%R/g, '%H:%M')
-      .replace(/%p/g, '');
+      .replace(/%p/g, '')
+      .replace(/%i/g, '%M')
+      .replace(/%e/g, '%d')
+      .replace(/%k/g, '%H');
     return `STRFTIME('${chToSqliteFmt}', ${expr})`;
   });
 
@@ -355,8 +370,14 @@ function replaceClickHouseFunctions(sql: string): string {
   // bar (visualization) → just return string
   result = result.replace(/\bbar\s*\([^)]+\)/gi, "'█'");
 
-  // concatWithSeparator
-  result = result.replace(/\bconcatWithSeparator\s*\([^,]+,\s*/gi, 'GROUP_CONCAT(');
+  // concatWithSeparator(sep, a, b, ...) → GROUP_CONCAT(a, sep) for the two-arg case
+  result = replaceBalancedFunction(result, 'concatWithSeparator', (args) => {
+    if (args.length >= 3) {
+      const sep = args[0].trim();
+      return `GROUP_CONCAT(${args[1].trim()}, ${sep})`;
+    }
+    return args.join(', ');
+  });
 
   // groupArray (ClickHouse) → GROUP_CONCAT (SQLite)
   result = result.replace(/\bgroupArray\s*\(\s*DISTINCT\s+([^)]+)\)/gi, 'GROUP_CONCAT(DISTINCT $1)');
@@ -469,6 +490,30 @@ function extractFunctionArgs(sql: string, startIdx: number): { endIdx: number; a
   }
 
   return { endIdx: i - 1, args: [currentArg.trim()] };
+}
+
+/**
+ * Replace a function call with balanced argument extraction.
+ * Handles nested calls and string literals correctly.
+ */
+function replaceBalancedFunction(sql: string, fnName: string, replacer: (args: string[]) => string): string {
+  const regex = new RegExp(`\\b${fnName}\\s*\\(`, 'gi');
+  let match: RegExpExecArray | null;
+  let result = sql;
+
+  while ((match = regex.exec(result)) !== null) {
+    const startIdx = match.index;
+    const innerStart = match.index + match[0].length;
+    const { endIdx, args } = extractFunctionArgs(result, innerStart);
+
+    if (args.length >= 1) {
+      const replacement = replacer(args);
+      result = result.slice(0, startIdx) + replacement + result.slice(endIdx + 1);
+      regex.lastIndex = startIdx + replacement.length;
+    }
+  }
+
+  return result;
 }
 
 function replaceNullCoalescing(sql: string): string {
