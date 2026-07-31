@@ -1,34 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/connection';
-import { withAdminAuth } from '@/lib/api-auth';
+import { withAdminAuth, parseDaysParam } from '@/lib/api-auth';
 import { apiServerError } from '@/lib/api-error';
+import type { PerformanceStats, DailyMetric } from '@/lib/performance-types';
 
 export const dynamic = 'force-dynamic';
-
-interface PerformanceStats {
-  metricName: string;
-  count: number;
-  avg: number;
-  p50: number;
-  p95: number;
-  p99: number;
-  worst: number;
-  good: number;
-  needsImprovement: number;
-  poor: number;
-}
-
-interface DailyMetric {
-  date: string;
-  avg: number;
-  count: number;
-}
 
 export const GET = withAdminAuth(async ({ request }) => {
   try {
     const { searchParams } = new URL(request.url);
     const metric = searchParams.get('metric') || 'LCP';
-    const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 90);
+    const days = parseDaysParam(searchParams);
     const page = searchParams.get('page');
 
     const db = getDb();

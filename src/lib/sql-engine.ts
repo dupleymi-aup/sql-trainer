@@ -174,7 +174,7 @@ function isSelectQuery(sql: string): boolean {
     trimmed.startsWith('EXPLAIN') ||
     trimmed.startsWith('WITH') ||
     // DML with RETURNING clause (INSERT/UPDATE/DELETE ... RETURNING)
-    (trimmed.includes('RETURNING') && trimmed.includes(' '))
+    trimmed.includes('RETURNING')
   );
 }
 
@@ -225,17 +225,6 @@ function adaptSchemaForDbType(schemaSql: string, dbType: 'sqlite' | 'postgresql'
 function validateInput(sql: string): string | undefined {
   if (!sql || !sql.trim()) {
     return t('sql.error.emptyInput');
-  }
-
-  // Check for potentially dangerous operations
-  const trimmed = stripLeadingComments(sql).toUpperCase().trim();
-  if (
-    trimmed.startsWith('DROP') &&
-    !trimmed.includes('DROP TABLE IF EXISTS') &&
-    !trimmed.includes('DROP INDEX IF EXISTS')
-  ) {
-    // Allow DROP but warn
-    return undefined; // Let it execute, error handling will catch if table doesn't exist
   }
 
   // Check length limit

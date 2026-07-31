@@ -17,9 +17,9 @@ const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: 'zh', label: '中文', flag: '🇨🇳' },
 ];
 
-export default function LocaleSelector() {
+export default function LocaleSelector({ serverLocale }: { serverLocale?: Locale }) {
   const [mounted, setMounted] = useState(false);
-  const [locale, setLocalLocale] = useState<Locale>(() => getLocale());
+  const [locale, setLocalLocale] = useState<Locale>(() => serverLocale ?? getLocale());
 
   useEffect(() => {
     setMounted(true);

@@ -19,7 +19,7 @@
  * these limitations when writing queries in training mode.
  */
 import { splitSqlSegments } from './sql-utils';
-import { transformSQL, checkUnsupportedFeatures, validateSQL } from './sql-ast-parser';
+import { transformSQL } from './sql-ast-parser';
 
 // Map of PostgreSQL data types to SQLite equivalents
 const TYPE_MAP: Record<string, string> = {
@@ -204,20 +204,6 @@ export function adaptWithWarnings(sql: string): AdaptResult {
   ];
 
   return { sql: result, warnings: allWarnings };
-}
-
-/**
- * Validate PostgreSQL SQL syntax.
- */
-export function validatePostgreSQL(sql: string): { valid: boolean; errors: string[] } {
-  return validateSQL(sql, 'postgresql');
-}
-
-/**
- * Check for unsupported features when transforming from PostgreSQL to SQLite.
- */
-export function checkUnsupportedPostgreSQLFeatures(sql: string): string[] {
-  return checkUnsupportedFeatures(sql, 'postgresql', 'sqlite');
 }
 
 export function adaptPostgreSQLToSQLite(sql: string): string {

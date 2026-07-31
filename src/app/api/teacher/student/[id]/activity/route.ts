@@ -1,11 +1,11 @@
-import { withTeacherAuth } from '@/lib/api-auth';
+import { withTeacherAuth, isValidUUID } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
 import { getDb, isStudentInTeacherGroup } from '@/lib/db-users';
 
 export const GET = withTeacherAuth(async ({ session, params }) => {
   const id = params?.id as string | undefined;
-  if (!id) {
-    return NextResponse.json({ success: false, error: 'Student ID is required' }, { status: 400 });
+  if (!id || !isValidUUID(id)) {
+    return NextResponse.json({ success: false, error: 'Valid student ID is required' }, { status: 400 });
   }
 
   // Verify that the student belongs to one of the teacher's groups

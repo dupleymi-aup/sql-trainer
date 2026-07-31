@@ -19,7 +19,7 @@ let currentLocale: Locale = 'en';
 
 // Initialize from server-passed locale on client side
 if (typeof window !== 'undefined') {
-  const serverLocale = (window as unknown as Record<string, unknown>).NEXT_PUBLIC_LOCALE as Locale | undefined;
+  const serverLocale = (window as Window & { NEXT_PUBLIC_LOCALE?: string }).NEXT_PUBLIC_LOCALE as Locale | undefined;
   if (serverLocale && (serverLocale === 'ru' || serverLocale === 'en' || serverLocale === 'zh')) {
     currentLocale = serverLocale;
   } else {

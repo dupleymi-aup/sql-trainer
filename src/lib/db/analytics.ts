@@ -1,7 +1,6 @@
 import fs from 'fs';
 import { getDb, DB_PATH } from './connection';
 import { type UserRole, type TimeRangeFilters } from './types';
-import { logAudit } from './users';
 import { TRAINING_TASKS } from '../training-tasks';
 import { logger } from '../logger';
 import { toTitleCase } from '../string-utils';
@@ -2245,1008 +2244,61 @@ export function getMasteryProgression(weeks: number = 12, filters?: TimeRangeFil
   return result.sort((a, b) => a.timestamp - b.timestamp);
 }
 
-// ==================== Deadlines & Reminders ====================
-
-export interface Deadline {
-  id: string;
-  creator_id: string;
-  type: 'course' | 'exam' | 'task' | 'inactivity';
-  title: string;
-  description: string | null;
-  target_type: 'individual' | 'group' | 'all_students';
-  target_id: string | null;
-  group_id: string | null;
-  task_id: string | null;
-  due_at: number;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface Group {
-  id: string;
-  name: string;
-  description: string | null;
-  teacher_id: string;
-  teacher_name: string | null;
-  member_count: number;
-  created_at: number;
-  updated_at: number;
-}
-
-export interface GroupMember {
-  user_id: string;
-  user_name: string;
-  user_email: string;
-  joined_at: number;
-}
-
-export interface GroupWithMembers extends Group {
-  members: GroupMember[];
-}
-
-export function createGroup(
-  data: {
-    name: string;
-    description?: string;
-    teacherId: string;
-    memberIds?: string[];
-  },
-  actorId?: string,
-): Group {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  const now = Date.now();
-  db.prepare(
-    `
-    INSERT INTO "groups" (id, name, description, teacher_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `,
-  ).run(id, data.name, data.description || null, data.teacherId, now, now);
-
-  // Add members if provided
-  if (data.memberIds && data.memberIds.length > 0) {
-    const insertMember = db.prepare('INSERT INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, ?)');
-    const insertMany = db.transaction((groupId: string, userIds: string[]) => {
-      for (const userId of userIds) {
-        insertMember.run(groupId, userId, now);
-      }
-    });
-    insertMany(id, data.memberIds);
-  }
-
-  if (actorId) {
-    logAudit(
-      actorId,
-      'group_create',
-      'group',
-      id,
-      JSON.stringify({ name: data.name, memberCount: data.memberIds?.length || 0 }),
-    );
-  }
-
-  const group = getGroupById(id);
-  if (!group) throw new Error(`Group not found: ${id}`);
-  return group;
-}
-
-export function getGroupById(id: string): Group | null {
-  const db = getDb();
-  const row = db
-    .prepare(
-      `
-    SELECT g.id, g.name, g.description, g.teacher_id, u.name as teacher_name,
-           (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count,
-           g.created_at, g.updated_at
-    FROM "groups" g
-    LEFT JOIN users u ON g.teacher_id = u.id
-    WHERE g.id = ?
-  `,
-    )
-    .get(id) as (Group & { member_count: number }) | undefined;
-
-  if (!row) return null;
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    teacher_id: row.teacher_id,
-    teacher_name: row.teacher_name,
-    member_count: row.member_count,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  };
-}
-
-/**
- * Check if a student belongs to any of the teacher's groups.
- * Returns true if the student is a member of at least one group owned by the teacher.
- */
-export function isStudentInTeacherGroup(studentId: string, teacherId: string): boolean {
-  const db = getDb();
-  const result = db
-    .prepare(
-      `
-    SELECT COUNT(*) as count
-    FROM group_members gm
-    INNER JOIN "groups" g ON gm.group_id = g.id
-    WHERE gm.user_id = ? AND g.teacher_id = ?
-  `,
-    )
-    .get(studentId, teacherId) as { count: number };
-
-  return result.count > 0;
-}
-
-export function getGroupsByTeacherId(teacherId: string): Group[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
-    SELECT g.id, g.name, g.description, g.teacher_id, u.name as teacher_name,
-           (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count,
-           g.created_at, g.updated_at
-    FROM "groups" g
-    LEFT JOIN users u ON g.teacher_id = u.id
-    WHERE g.teacher_id = ?
-    ORDER BY g.created_at DESC
-  `,
-    )
-    .all(teacherId) as (Group & { member_count: number })[];
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    teacher_id: row.teacher_id,
-    teacher_name: row.teacher_name,
-    member_count: row.member_count,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }));
-}
-
-export function getAllGroupsForAdmin(): Group[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
-    SELECT g.id, g.name, g.description, g.teacher_id, u.name as teacher_name,
-           (SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.id) as member_count,
-           g.created_at, g.updated_at
-    FROM "groups" g
-    LEFT JOIN users u ON g.teacher_id = u.id
-    ORDER BY g.created_at DESC
-  `,
-    )
-    .all() as (Group & { member_count: number })[];
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    teacher_id: row.teacher_id,
-    teacher_name: row.teacher_name,
-    member_count: row.member_count,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }));
-}
-
-export function updateGroup(id: string, data: { name?: string; description?: string }, actorId?: string): Group | null {
-  const db = getDb();
-  const now = Date.now();
-  const parts: string[] = [];
-  const values: unknown[] = [];
-
-  if (data.name !== undefined) {
-    parts.push('name = ?');
-    values.push(data.name);
-  }
-  if (data.description !== undefined) {
-    parts.push('description = ?');
-    values.push(data.description);
-  }
-  if (parts.length === 0) return getGroupById(id);
-
-  parts.push('updated_at = ?');
-  values.push(now);
-  values.push(id);
-
-  const result = db.prepare(`UPDATE "groups" SET ${parts.join(', ')} WHERE id = ?`).run(...values);
-  if (result.changes === 0) return null;
-
-  if (actorId) {
-    logAudit(actorId, 'group_update', 'group', id, JSON.stringify(data));
-  }
-
-  return getGroupById(id);
-}
-
-export function deleteGroup(id: string, actorId?: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM "groups" WHERE id = ?').run(id);
-  if (result.changes === 0) return false;
-
-  if (actorId) {
-    logAudit(actorId, 'group_delete', 'group', id);
-  }
-
-  return true;
-}
-
-export function addGroupMembers(groupId: string, userIds: string[], actorId?: string): number {
-  const db = getDb();
-  const now = Date.now();
-  const insertMember = db.prepare(
-    'INSERT OR IGNORE INTO group_members (group_id, user_id, joined_at) VALUES (?, ?, ?)',
-  );
-  let added = 0;
-  for (const userId of userIds) {
-    const result = insertMember.run(groupId, userId, now);
-    added += result.changes;
-  }
-
-  if (actorId && added > 0) {
-    logAudit(actorId, 'group_add_members', 'group', groupId, JSON.stringify({ addedCount: added }));
-  }
-
-  return added;
-}
-
-export function removeGroupMember(groupId: string, userId: string, actorId?: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').run(groupId, userId);
-
-  if (result.changes > 0 && actorId) {
-    logAudit(actorId, 'group_remove_member', 'group', groupId, JSON.stringify({ removedUserId: userId }));
-  }
-
-  return result.changes > 0;
-}
-
-export function getGroupMembers(groupId: string): GroupMember[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
-    SELECT u.id as user_id, u.name as user_name, u.email as user_email, gm.joined_at
-    FROM group_members gm
-    JOIN users u ON gm.user_id = u.id
-    WHERE gm.group_id = ?
-    ORDER BY u.name
-  `,
-    )
-    .all(groupId) as GroupMember[];
-
-  return rows;
-}
-
-export interface GroupNotificationResult {
-  total: number;
-  queued: number;
-  failed: number;
-  errors: string[];
-}
-
-export function notifyGroupMembers(
-  groupId: string,
-  subject: string,
-  message: string,
-  channel: 'email' | 'in_app',
-  actorId: string,
-): GroupNotificationResult {
-  const members = getGroupMembers(groupId);
-  const result: GroupNotificationResult = { total: members.length, queued: 0, failed: 0, errors: [] };
-
-  if (members.length === 0) return result;
-
-  if (channel === 'in_app') {
-    for (const member of members) {
-      try {
-        logReminderDelivery(groupId, member.user_id, 'teacher_notification');
-        result.queued++;
-      } catch (err) {
-        result.failed++;
-        result.errors.push(`Failed for ${member.user_email}: ${err}`);
-      }
-    }
-  } else if (channel === 'email') {
-    for (const member of members) {
-      try {
-        queueEmail(member.user_id, subject, message, Date.now());
-        result.queued++;
-      } catch (err) {
-        result.failed++;
-        result.errors.push(`Failed for ${member.user_email}: ${err}`);
-      }
-    }
-  }
-
-  logAudit(
-    actorId,
-    'group_notify',
-    'group',
-    groupId,
-    JSON.stringify({
-      subject,
-      channel,
-      total: result.total,
-      queued: result.queued,
-      failed: result.failed,
-    }),
-  );
-
-  return result;
-}
-
-export function getGroupDeadlines(groupId: string): Deadline[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM deadlines WHERE group_id = ? ORDER BY due_at ASC').all(groupId) as Deadline[];
-}
-
-export function getUserGroups(userId: string): Group[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
-    SELECT g.id, g.name, g.description, g.teacher_id, u.name as teacher_name,
-           (SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id = g.id) as member_count,
-           g.created_at, g.updated_at
-    FROM group_members gm
-    JOIN "groups" g ON gm.group_id = g.id
-    LEFT JOIN users u ON g.teacher_id = u.id
-    WHERE gm.user_id = ?
-    ORDER BY g.created_at DESC
-  `,
-    )
-    .all(userId) as (Group & { member_count: number })[];
-
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    teacher_id: row.teacher_id,
-    teacher_name: row.teacher_name,
-    member_count: row.member_count,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }));
-}
-
-export function getUserGroup(userId: string): Group | null {
-  const groups = getUserGroups(userId);
-  return groups.length > 0 ? groups[0] : null;
-}
-
-export interface PendingReminder {
-  id: string;
-  deadline_id: string;
-  type: 'course' | 'exam' | 'task' | 'inactivity';
-  title: string;
-  description: string | null;
-  task_id: string | null;
-  due_at: number;
-  is_overdue: boolean;
-  hours_until_due: number;
-}
-
-export interface PushSubRow {
-  id: string;
-  user_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  created_at: number;
-  last_used: number | null;
-}
-
-export function createDeadline(
-  data: {
-    creatorId: string;
-    type: Deadline['type'];
-    title: string;
-    description?: string;
-    targetType: Deadline['target_type'];
-    targetId?: string;
-    groupId?: string;
-    taskId?: string;
-    dueAt: number;
-  },
-  actorId?: string,
-): Deadline {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  const now = Date.now();
-  db.prepare(
-    `
-    INSERT INTO deadlines (id, creator_id, type, title, description, target_type, target_id, group_id, task_id, due_at, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `,
-  ).run(
-    id,
-    data.creatorId,
-    data.type,
-    data.title,
-    data.description || null,
-    data.targetType,
-    data.targetId || null,
-    data.groupId || null,
-    data.taskId || null,
-    data.dueAt,
-    now,
-    now,
-  );
-  if (actorId) {
-    logAudit(
-      actorId,
-      'deadline_created',
-      'deadline',
-      id,
-      JSON.stringify({ title: data.title, type: data.type, dueAt: data.dueAt }),
-    );
-  }
-  const deadline = getDeadlineById(id);
-  if (!deadline) throw new Error(`Failed to retrieve newly created deadline ${id}`);
-  return deadline;
-}
-
-export function getDeadlineById(id: string): Deadline | undefined {
-  const db = getDb();
-  return db.prepare('SELECT * FROM deadlines WHERE id = ?').get(id) as Deadline | undefined;
-}
-
-export function getDeadlinesForCreator(creatorId: string): Deadline[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM deadlines WHERE creator_id = ? ORDER BY due_at ASC').all(creatorId) as Deadline[];
-}
-
-export function getAllDeadlines(): Deadline[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM deadlines ORDER BY due_at ASC').all() as Deadline[];
-}
-
-export function updateDeadline(
-  id: string,
-  data: {
-    title?: string;
-    description?: string;
-    type?: Deadline['type'];
-    targetType?: Deadline['target_type'];
-    targetId?: string;
-    groupId?: string;
-    taskId?: string;
-    dueAt?: number;
-  },
-  creatorId: string,
-  actorId?: string,
-): boolean {
-  const db = getDb();
-  const existing = getDeadlineById(id);
-  if (!existing) return false;
-  if (existing.creator_id !== creatorId) {
-    const user = db.prepare('SELECT role FROM users WHERE id = ?').get(creatorId) as { role: string } | undefined;
-    if (user?.role !== 'admin') return false;
-  }
-  const fields: string[] = [];
-  const values: unknown[] = [];
-  if (data.title !== undefined) {
-    fields.push('title = ?');
-    values.push(data.title);
-  }
-  if (data.description !== undefined) {
-    fields.push('description = ?');
-    values.push(data.description);
-  }
-  if (data.type !== undefined) {
-    fields.push('type = ?');
-    values.push(data.type);
-  }
-  if (data.targetType !== undefined) {
-    fields.push('target_type = ?');
-    values.push(data.targetType);
-  }
-  if (data.targetId !== undefined) {
-    fields.push('target_id = ?');
-    values.push(data.targetId);
-  }
-  if (data.groupId !== undefined) {
-    fields.push('group_id = ?');
-    values.push(data.groupId);
-  }
-  if (data.taskId !== undefined) {
-    fields.push('task_id = ?');
-    values.push(data.taskId);
-  }
-  if (data.dueAt !== undefined) {
-    fields.push('due_at = ?');
-    values.push(data.dueAt);
-  }
-  fields.push('updated_at = ?');
-  values.push(Date.now());
-  values.push(id);
-  db.prepare(`UPDATE deadlines SET ${fields.join(', ')} WHERE id = ?`).run(...values);
-  if (actorId) {
-    logAudit(actorId, 'deadline_updated', 'deadline', id, JSON.stringify(data));
-  }
-  return true;
-}
-
-export function deleteDeadline(id: string, creatorId: string, actorId?: string): boolean {
-  const db = getDb();
-  const existing = getDeadlineById(id);
-  if (!existing) return false;
-  if (existing.creator_id !== creatorId) {
-    const user = db.prepare('SELECT role FROM users WHERE id = ?').get(creatorId) as { role: string } | undefined;
-    if (user?.role !== 'admin') return false;
-  }
-  db.prepare('DELETE FROM deadlines WHERE id = ?').run(id);
-  if (actorId) {
-    logAudit(actorId, 'deadline_deleted', 'deadline', id, JSON.stringify({ title: existing.title }));
-  }
-  return true;
-}
-
-export function getPendingReminders(userId: string): PendingReminder[] {
-  const db = getDb();
-  const now = Date.now();
-
-  const user = db.prepare('SELECT role FROM users WHERE id = ?').get(userId) as { role: string } | undefined;
-  if (!user) return [];
-
-  let query = `
-    SELECT d.* FROM deadlines d
-    WHERE d.due_at <= ? + 86400000
-    AND d.id NOT IN (
-      SELECT deadline_id FROM reminder_log WHERE user_id = ? AND channel = 'in_app'
-    )
-  `;
-  const params: unknown[] = [now, userId];
-
-  if (user.role === 'student') {
-    query += ` AND (
-      d.target_type = 'all_students'
-      OR (d.target_type = 'individual' AND d.target_id = ?)
-    )`;
-    params.push(userId);
-  }
-
-  query += ' ORDER BY d.due_at ASC';
-
-  const deadlines = db.prepare(query).all(...params) as Deadline[];
-
-  const inactivityDeadline = db
-    .prepare(
-      `
-    SELECT d.* FROM deadlines d
-    WHERE d.type = 'inactivity' AND d.due_at <= ? + 86400000
-    AND d.id NOT IN (
-      SELECT deadline_id FROM reminder_log WHERE user_id = ? AND channel = 'inactivity_warning'
-    )
-    AND (d.target_type = 'all_students' OR (d.target_type = 'individual' AND d.target_id = ?))
-    ORDER BY d.due_at ASC
-  `,
-    )
-    .all(now, userId, userId) as Deadline[];
-
-  const allDeadlines = [...deadlines];
-  for (const inc of inactivityDeadline) {
-    if (!allDeadlines.find((d) => d.id === inc.id)) {
-      allDeadlines.push(inc);
-    }
-  }
-
-  return allDeadlines.map((d) => ({
-    id: d.id,
-    deadline_id: d.id,
-    type: d.type,
-    title: d.title,
-    description: d.description,
-    task_id: d.task_id,
-    due_at: d.due_at,
-    is_overdue: d.due_at < now,
-    hours_until_due: Math.round((d.due_at - now) / 3600000),
-  }));
-}
-
-export function logReminderDelivery(
-  deadlineId: string,
-  userId: string,
-  channel: string,
-  status: string = 'sent',
-  error?: string,
-): void {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  db.prepare(
-    `
-    INSERT OR IGNORE INTO reminder_log (id, deadline_id, user_id, channel, sent_at, status, error)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `,
-  ).run(id, deadlineId, userId, channel, Date.now(), status, error || null);
-}
-
-export function savePushSubscription(
-  userId: string,
-  subscription: { endpoint: string; p256dh: string; auth: string },
-): void {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  const now = Date.now();
-  db.prepare(
-    `
-    INSERT OR REPLACE INTO push_subscriptions (id, user_id, endpoint, p256dh, auth, created_at, last_used)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `,
-  ).run(id, userId, subscription.endpoint, subscription.p256dh, subscription.auth, now, now);
-}
-
-export function getUserPushSubscriptions(userId: string): PushSubRow[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM push_subscriptions WHERE user_id = ?').all(userId) as PushSubRow[];
-}
-
-export function deletePushSubscription(userId: string, endpoint: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM push_subscriptions WHERE user_id = ? AND endpoint = ?').run(userId, endpoint);
-  return result.changes > 0;
-}
-
-// ==================== Notification Preferences ====================
-
-export interface NotificationPreferences {
-  user_id: string;
-  channels_enabled: string; // JSON array: ["in_app", "push", "email"]
-  reminder_intervals: string; // JSON array of ms: [86400000, 3600000]
-  teacher_notify_students: number; // 0 or 1
-  updated_at: number;
-}
-
-export const DEFAULT_CHANNELS = JSON.stringify(['in_app']);
-export const DEFAULT_INTERVALS = JSON.stringify([86400000, 3600000]); // 24h, 1h
-
-export function getNotificationPreferences(userId: string): NotificationPreferences {
-  const db = getDb();
-  const prefs = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ?').get(userId) as
-    NotificationPreferences | undefined;
-  if (prefs) return prefs;
-
-  // Create defaults
-  db.prepare(
-    `
-    INSERT INTO notification_preferences (user_id, channels_enabled, reminder_intervals, teacher_notify_students, updated_at)
-    VALUES (?, ?, ?, 1, ?)
-  `,
-  ).run(userId, DEFAULT_CHANNELS, DEFAULT_INTERVALS, Date.now());
-
-  return {
-    user_id: userId,
-    channels_enabled: DEFAULT_CHANNELS,
-    reminder_intervals: DEFAULT_INTERVALS,
-    teacher_notify_students: 1,
-    updated_at: Date.now(),
-  };
-}
-
-export function updateNotificationPreferences(
-  userId: string,
-  prefs: {
-    channels_enabled?: string[];
-    reminder_intervals?: number[];
-    teacher_notify_students?: boolean;
-  },
-): void {
-  const db = getDb();
-  const existing = db.prepare('SELECT * FROM notification_preferences WHERE user_id = ?').get(userId) as
-    NotificationPreferences | undefined;
-
-  const channels = prefs.channels_enabled || (existing ? JSON.parse(existing.channels_enabled) : ['in_app']);
-  const intervals =
-    prefs.reminder_intervals || (existing ? JSON.parse(existing.reminder_intervals) : [86400000, 3600000]);
-  const notifyStudents =
-    prefs.teacher_notify_students !== undefined
-      ? prefs.teacher_notify_students
-        ? 1
-        : 0
-      : (existing?.teacher_notify_students ?? 1);
-
-  db.prepare(
-    `
-    INSERT INTO notification_preferences (user_id, channels_enabled, reminder_intervals, teacher_notify_students, updated_at)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(user_id) DO UPDATE SET
-      channels_enabled = excluded.channels_enabled,
-      reminder_intervals = excluded.reminder_intervals,
-      teacher_notify_students = excluded.teacher_notify_students,
-      updated_at = excluded.updated_at
-  `,
-  ).run(userId, JSON.stringify(channels), JSON.stringify(intervals), notifyStudents, Date.now());
-}
-
-// ==================== Reminder Schedule ====================
-
-export interface ReminderScheduleRow {
-  id: string;
-  deadline_id: string;
-  user_id: string;
-  channel: string;
-  trigger_at: number;
-  status: string;
-  sent_at: number | null;
-  error: string | null;
-}
-
-/**
- * Given a deadline, returns the list of student user_ids it applies to.
- */
-export function resolveDeadlineTargets(deadline: Deadline): string[] {
-  const db = getDb();
-
-  if (deadline.target_type === 'all_students') {
-    const rows = db
-      .prepare("SELECT id FROM users WHERE role = 'student' AND banned_at IS NULL AND deleted_at IS NULL")
-      .all() as { id: string }[];
-    return rows.map((r) => r.id);
-  }
-
-  if (deadline.target_type === 'individual' && deadline.target_id) {
-    return [deadline.target_id];
-  }
-
-  if (deadline.target_type === 'group' && deadline.group_id) {
-    const rows = db.prepare('SELECT user_id FROM group_members WHERE group_id = ?').all(deadline.group_id) as {
-      user_id: string;
-    }[];
-    return rows.map((r) => r.user_id);
-  }
-
-  return [];
-}
-
-/**
- * Builds reminder schedule entries for a deadline: target users x intervals x channels.
- * Called when a deadline is created or updated.
- */
-export function buildReminderSchedule(deadlineId: string): void {
-  const db = getDb();
-  const deadline = getDeadlineById(deadlineId);
-  if (!deadline) return;
-
-  const targets = resolveDeadlineTargets(deadline);
-  if (targets.length === 0) return;
-
-  // Get default intervals and channels (use creator's preferences as default)
-  const creatorPrefs = getNotificationPreferences(deadline.creator_id);
-  let intervals: number[];
-  let channels: string[];
-  try {
-    intervals = JSON.parse(creatorPrefs.reminder_intervals);
-  } catch {
-    intervals = [];
-  }
-  try {
-    channels = JSON.parse(creatorPrefs.channels_enabled);
-  } catch {
-    channels = [];
-  }
-
-  const now = Date.now();
-
-  // Delete existing schedule for this deadline (in case of update)
-  db.prepare('DELETE FROM reminder_schedule WHERE deadline_id = ?').run(deadlineId);
-
-  // Build schedule entries
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO reminder_schedule (id, deadline_id, user_id, channel, trigger_at, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
-  `);
-
-  const insertMany = db.transaction(
-    (entries: Array<{ id: string; deadline_id: string; user_id: string; channel: string; trigger_at: number }>) => {
-      for (const entry of entries) {
-        stmt.run(entry.id, entry.deadline_id, entry.user_id, entry.channel, entry.trigger_at);
-      }
-    },
-  );
-
-  const entries: Array<{ id: string; deadline_id: string; user_id: string; channel: string; trigger_at: number }> = [];
-
-  for (const userId of targets) {
-    // Also get this user's preferences to filter channels
-    const userPrefs = getNotificationPreferences(userId);
-    let userChannels: string[];
-    let userIntervals: number[];
-    try {
-      userChannels = JSON.parse(userPrefs.channels_enabled);
-    } catch {
-      userChannels = [];
-    }
-    try {
-      userIntervals = JSON.parse(userPrefs.reminder_intervals);
-    } catch {
-      userIntervals = [];
-    }
-
-    // Use the intersection of creator channels and user channels
-    const effectiveChannels = channels.filter((c) => userChannels.includes(c));
-    // Use the intersection of creator intervals and user intervals
-    const effectiveIntervals = intervals.filter((i) => userIntervals.includes(i));
-
-    for (const intervalMs of effectiveIntervals) {
-      const triggerAt = deadline.due_at - intervalMs;
-      // Skip if trigger time is in the past
-      if (triggerAt < now) continue;
-
-      for (const channel of effectiveChannels) {
-        entries.push({
-          id: crypto.randomUUID(),
-          deadline_id: deadlineId,
-          user_id: userId,
-          channel,
-          trigger_at: triggerAt,
-        });
-      }
-    }
-  }
-
-  if (entries.length > 0) {
-    insertMany(entries);
-  }
-}
-
-/**
- * Returns all schedule rows where trigger_at <= now AND status = 'pending'.
- */
-export function getDueReminders(): ReminderScheduleRow[] {
-  const db = getDb();
-  const now = Date.now();
-  return db
-    .prepare(
-      `
-    SELECT * FROM reminder_schedule
-    WHERE trigger_at <= ? AND status = 'pending'
-    ORDER BY trigger_at ASC
-  `,
-    )
-    .all(now) as ReminderScheduleRow[];
-}
-
-export function markScheduleSent(id: string): void {
-  const db = getDb();
-  db.prepare(
-    `
-    UPDATE reminder_schedule SET status = 'sent', sent_at = ? WHERE id = ?
-  `,
-  ).run(Date.now(), id);
-}
-
-export function markScheduleFailed(id: string, error: string): void {
-  const db = getDb();
-  db.prepare(
-    `
-    UPDATE reminder_schedule SET status = 'failed', error = ? WHERE id = ?
-  `,
-  ).run(error, id);
-}
-
-/**
- * Get teacher notification deadlines: deadlines created by a teacher that are approaching.
- */
-export function getTeacherNotificationDeadlines(
-  teacherId: string,
-  withinMs: number = 86400000,
-): Array<{
-  deadline: Deadline;
-  target_count: number;
-  reminders_sent: number;
-  completions: number;
-}> {
-  const db = getDb();
-  const now = Date.now();
-
-  const deadlines = db
-    .prepare(
-      `
-    SELECT * FROM deadlines
-    WHERE creator_id = ? AND due_at > ? AND due_at <= ? + ?
-    ORDER BY due_at ASC
-  `,
-    )
-    .all(teacherId, now, now, withinMs) as Deadline[];
-
-  return deadlines.map((d) => {
-    const targets = resolveDeadlineTargets(d);
-    const sent = db
-      .prepare(
-        `
-      SELECT COUNT(*) as cnt FROM reminder_schedule
-      WHERE deadline_id = ? AND status = 'sent'
-    `,
-      )
-      .get(d.id) as { cnt: number };
-    const completions = db
-      .prepare(
-        `
-      SELECT COUNT(*) as cnt FROM user_progress
-      WHERE task_id IS NOT NULL AND task_id IN (
-        SELECT task_id FROM deadlines WHERE id = ?
-      )
-    `,
-      )
-      .get(d.id) as { cnt: number };
-
-    return {
-      deadline: d,
-      target_count: targets.length,
-      reminders_sent: sent.cnt,
-      completions: completions.cnt,
-    };
-  });
-}
-
-// ==================== Email Queue ====================
-
-export interface EmailQueueRow {
-  id: string;
-  user_id: string;
-  subject: string;
-  body_html: string;
-  scheduled_at: number;
-  status: string;
-  attempts: number;
-  max_attempts: number;
-  error: string | null;
-  created_at: number;
-}
-
-export function queueEmail(
-  userId: string,
-  subject: string,
-  bodyHtml: string,
-  scheduledAt: number = Date.now(),
-): string {
-  const db = getDb();
-  const id = crypto.randomUUID();
-  db.prepare(
-    `
-    INSERT INTO email_queue (id, user_id, subject, body_html, scheduled_at, status, attempts, max_attempts, created_at)
-    VALUES (?, ?, ?, ?, ?, 'pending', 0, 3, ?)
-  `,
-  ).run(id, userId, subject, bodyHtml, scheduledAt, Date.now());
-  return id;
-}
-
-export function getDueEmails(): EmailQueueRow[] {
-  const db = getDb();
-  const now = Date.now();
-  return db
-    .prepare(
-      `
-    SELECT * FROM email_queue
-    WHERE scheduled_at <= ? AND status = 'pending' AND attempts < max_attempts
-    ORDER BY scheduled_at ASC
-    LIMIT 50
-  `,
-    )
-    .all(now) as EmailQueueRow[];
-}
-
-export function markEmailSent(id: string): void {
-  const db = getDb();
-  db.prepare(
-    `
-    UPDATE email_queue SET status = 'sent', attempts = attempts + 1 WHERE id = ?
-  `,
-  ).run(id);
-}
-
-export function markEmailFailed(id: string, error: string): void {
-  const db = getDb();
-  db.prepare(
-    `
-    UPDATE email_queue SET status = 'pending', attempts = attempts + 1, error = ? WHERE id = ?
-  `,
-  ).run(error, id);
-}
+export { type Deadline } from './analytics/deadlines';
+
+export { type Group, type GroupMember, type GroupWithMembers, type GroupNotificationResult } from './analytics/groups';
+export {
+  createGroup,
+  getGroupById,
+  isStudentInTeacherGroup,
+  getGroupsByTeacherId,
+  getAllGroupsForAdmin,
+  updateGroup,
+  deleteGroup,
+  addGroupMembers,
+  removeGroupMember,
+  getGroupMembers,
+  notifyGroupMembers,
+  getGroupDeadlines,
+  getUserGroups,
+  getUserGroup,
+} from './analytics/groups';
+
+export { type PendingReminder, type ReminderScheduleRow } from './analytics/reminders';
+export {
+  getPendingReminders,
+  logReminderDelivery,
+  resolveDeadlineTargets,
+  buildReminderSchedule,
+  getDueReminders,
+  markScheduleSent,
+  markScheduleFailed,
+  getTeacherNotificationDeadlines,
+} from './analytics/reminders';
+
+export { type PushSubRow, type NotificationPreferences, type EmailQueueRow } from './analytics/notifications';
+export {
+  DEFAULT_CHANNELS,
+  DEFAULT_INTERVALS,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  savePushSubscription,
+  getUserPushSubscriptions,
+  deletePushSubscription,
+  queueEmail,
+  getDueEmails,
+  markEmailSent,
+  markEmailFailed,
+} from './analytics/notifications';
+
+export {
+  createDeadline,
+  getDeadlineById,
+  getDeadlinesForCreator,
+  getAllDeadlines,
+  updateDeadline,
+  deleteDeadline,
+} from './analytics/deadlines';
 
 // ==================== System Health ====================
 
@@ -3766,19 +2818,34 @@ export function getStudentLearningPace(filters?: TimeRangeFilters): LearningPace
     )
     .all() as { id: string; name: string; email: string; tasks_completed: number }[];
 
+  // Batch-fetch all progress data to avoid N+1
+  let allProgressQuery = 'SELECT user_id, completed_at FROM user_progress WHERE 1=1';
+  const allProgressParams: unknown[] = [];
+  if (filters?.start_date) {
+    allProgressQuery += ' AND completed_at >= ?';
+    allProgressParams.push(filters.start_date);
+  }
+  if (filters?.end_date) {
+    allProgressQuery += ' AND completed_at <= ?';
+    allProgressParams.push(filters.end_date);
+  }
+  allProgressQuery += ' ORDER BY user_id, completed_at ASC';
+  const allProgress = db.prepare(allProgressQuery).all(...allProgressParams) as {
+    user_id: string;
+    completed_at: number;
+  }[];
+
+  // Group progress by user_id
+  const progressByUser = new Map<string, { completed_at: number }[]>();
+  for (const row of allProgress) {
+    const arr = progressByUser.get(row.user_id);
+    if (arr) arr.push(row);
+    else progressByUser.set(row.user_id, [row]);
+  }
+
   return students
     .map((student) => {
-      let query = 'SELECT completed_at FROM user_progress WHERE user_id = ? ORDER BY completed_at ASC';
-      const params: unknown[] = [student.id];
-      if (filters?.start_date) {
-        query += ' AND completed_at >= ?';
-        params.push(filters.start_date);
-      }
-      if (filters?.end_date) {
-        query += ' AND completed_at <= ?';
-        params.push(filters.end_date);
-      }
-      const progress = db.prepare(query).all(...params) as { completed_at: number }[];
+      const progress = progressByUser.get(student.id) || [];
 
       const gaps: number[] = [];
       for (let i = 1; i < progress.length; i++) {
@@ -4186,6 +3253,11 @@ export function getTopicPerformanceAnalysis(filters?: TimeRangeFilters): TopicPe
   const recentCutoff = now - 30 * MS_PER_DAY;
   const previousCutoff = now - 60 * MS_PER_DAY;
 
+  // Hoist totalStudents query outside loop to avoid N+1
+  const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
+    count: number;
+  };
+
   return categories.map((cat) => {
     const placeholders = cat.taskIds.map(() => '?').join(',');
     if (!cat.taskIds.length) {
@@ -4231,10 +3303,6 @@ export function getTopicPerformanceAnalysis(filters?: TimeRangeFilters): TopicPe
       students_completed: number;
       avg_attempts: number;
       first_attempt_rate: number;
-    };
-
-    const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
-      count: number;
     };
 
     // Trend: recent vs previous
@@ -4429,14 +3497,11 @@ export function getLearningPathEffectiveness(filters?: TimeRangeFilters): Learni
     taskOrderMap.set(task.id, index);
   });
 
-  let baseDateCondition = '';
   const baseDateParams: unknown[] = [];
   if (filters?.start_date) {
-    baseDateCondition += ' AND completed_at >= ?';
     baseDateParams.push(filters.start_date);
   }
   if (filters?.end_date) {
-    baseDateCondition += ' AND completed_at <= ?';
     baseDateParams.push(filters.end_date);
   }
 
@@ -4451,16 +3516,35 @@ export function getLearningPathEffectiveness(filters?: TimeRangeFilters): Learni
     )
     .all() as { id: string; name: string; tasks_completed: number; created_at: number }[];
 
+  // Batch-fetch all progress data to avoid N+1
+  let allProgressQuery = `SELECT user_id, task_id, completed_at, attempts FROM user_progress WHERE 1=1`;
+  const allProgressParams: unknown[] = [];
+  if (filters?.start_date) {
+    allProgressQuery += ' AND completed_at >= ?';
+    allProgressParams.push(filters.start_date);
+  }
+  if (filters?.end_date) {
+    allProgressQuery += ' AND completed_at <= ?';
+    allProgressParams.push(filters.end_date);
+  }
+  allProgressQuery += ' ORDER BY user_id, completed_at ASC';
+  const allProgress = db.prepare(allProgressQuery).all(...allProgressParams) as {
+    user_id: string;
+    task_id: string;
+    completed_at: number;
+    attempts: number;
+  }[];
+
+  // Group progress by user_id
+  const progressByUser = new Map<string, { task_id: string; completed_at: number; attempts: number }[]>();
+  for (const row of allProgress) {
+    const arr = progressByUser.get(row.user_id);
+    if (arr) arr.push(row);
+    else progressByUser.set(row.user_id, [row]);
+  }
+
   return students.map((student) => {
-    const progress = db
-      .prepare(
-        `
-      SELECT task_id, completed_at FROM user_progress
-      WHERE user_id = ?${baseDateCondition}
-      ORDER BY completed_at ASC
-    `,
-      )
-      .all(student.id, ...baseDateParams) as { task_id: string; completed_at: number }[];
+    const progress = progressByUser.get(student.id) || [];
 
     // Compute sequentiality score
     let adjacentPairs = 0;
@@ -4482,13 +3566,7 @@ export function getLearningPathEffectiveness(filters?: TimeRangeFilters): Learni
 
     const avgAttempts =
       progress.length > 0
-        ? Math.round(
-            (
-              db
-                .prepare('SELECT ROUND(AVG(attempts * 1.0), 2) as avg FROM user_progress WHERE user_id = ?')
-                .get(student.id) as { avg: number }
-            ).avg * 100,
-          ) / 100
+        ? Math.round((progress.reduce((sum, p) => sum + p.attempts, 0) / progress.length) * 100) / 100
         : 0;
 
     const daysSpan =
@@ -4773,6 +3851,11 @@ export function getTaskCategoryPerformance(filters?: TimeRangeFilters): Category
 
   if (activeCategories.length === 0) return [];
 
+  // Hoist totalStudents query outside loop to avoid N+1
+  const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
+    count: number;
+  };
+
   return activeCategories.map((cat) => {
     const taskIds = TRAINING_TASKS.filter((t) => cat.prefixes.some((p) => t.id.startsWith(p))).map((t) => t.id);
     if (!taskIds.length) {
@@ -4825,10 +3908,6 @@ export function getTaskCategoryPerformance(filters?: TimeRangeFilters): Category
       )
       .get(...baseDateParams, taskIds.length) as { count: number };
 
-    const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
-      count: number;
-    };
-
     return {
       category: cat.key,
       label: cat.label,
@@ -4871,16 +3950,21 @@ export function getSessionAnalysis(): SessionEntry[] {
     )
     .all() as { id: string; name: string; email: string }[];
 
+  // Batch-fetch all progress data to avoid N+1
+  const allProgressRows = db
+    .prepare(`SELECT user_id, completed_at FROM user_progress ORDER BY user_id, completed_at ASC`)
+    .all() as { user_id: string; completed_at: number }[];
+
+  // Group progress by user_id
+  const progressByUser = new Map<string, { completed_at: number }[]>();
+  for (const row of allProgressRows) {
+    const arr = progressByUser.get(row.user_id);
+    if (arr) arr.push(row);
+    else progressByUser.set(row.user_id, [row]);
+  }
+
   return students.map((student) => {
-    const progress = db
-      .prepare(
-        `
-      SELECT completed_at FROM user_progress
-      WHERE user_id = ?
-      ORDER BY completed_at ASC
-    `,
-      )
-      .all(student.id) as { completed_at: number }[];
+    const progress = progressByUser.get(student.id) || [];
 
     if (progress.length < 2) {
       return {
@@ -5156,43 +4240,66 @@ export function getDeadlineCompliance(filters?: TimeRangeFilters): DeadlineCompl
   let totalOverdueDays = 0;
   let overdueCount = 0;
 
+  // Batch-fetch all student data and completions to avoid N+1
+  const allStudents = db.prepare("SELECT id, name, email FROM users WHERE role = 'student'").all() as Array<{
+    id: string;
+    name: string;
+    email: string;
+  }>;
+  const allStudentMap = new Map(allStudents.map((s) => [s.id, s]));
+
+  // Batch-fetch all completions
+  const allCompletions = db.prepare('SELECT user_id, task_id, completed_at FROM user_progress').all() as Array<{
+    user_id: string;
+    task_id: string;
+    completed_at: number;
+  }>;
+  const completionMap = new Map<string, number>(); // key: `${user_id}:${task_id}` -> completed_at
+  for (const c of allCompletions) {
+    completionMap.set(`${c.user_id}:${c.task_id}`, c.completed_at);
+  }
+
+  // Batch-fetch group members
+  const allGroupMembers = db.prepare('SELECT user_id, group_id FROM group_members').all() as Array<{
+    user_id: string;
+    group_id: string;
+  }>;
+  const groupMembersMap = new Map<string, Set<string>>(); // group_id -> Set<user_id>
+  for (const gm of allGroupMembers) {
+    const set = groupMembersMap.get(gm.group_id);
+    if (set) set.add(gm.user_id);
+    else groupMembersMap.set(gm.group_id, new Set([gm.user_id]));
+  }
+
+  // Batch-fetch task completions (students who attempted a specific task)
+  const taskStudentSet = new Map<string, Set<string>>(); // task_id -> Set<user_id>
+  for (const c of allCompletions) {
+    const set = taskStudentSet.get(c.task_id);
+    if (set) set.add(c.user_id);
+    else taskStudentSet.set(c.task_id, new Set([c.user_id]));
+  }
+
   for (const deadline of deadlines) {
     let targetedStudents: Array<{ id: string; name: string; email: string }>;
 
     if (deadline.target_type === 'all_students') {
-      targetedStudents = db
-        .prepare(
-          `
-        SELECT u.id, u.name, u.email
-        FROM users u
-        WHERE u.role = 'student'
-      `,
-        )
-        .all() as Array<{ id: string; name: string; email: string }>;
+      targetedStudents = allStudents;
     } else if (deadline.target_type === 'task' && deadline.task_id) {
-      targetedStudents = db
-        .prepare(
-          `
-        SELECT u.id, u.name, u.email
-        FROM users u
-        INNER JOIN user_progress up2 ON u.id = up2.user_id
-        WHERE up2.task_id = ?
-      `,
-        )
-        .all(deadline.task_id) as Array<{ id: string; name: string; email: string }>;
+      const userIds = taskStudentSet.get(deadline.task_id) || new Set();
+      targetedStudents = [...userIds].map((id) => allStudentMap.get(id)).filter(Boolean) as Array<{
+        id: string;
+        name: string;
+        email: string;
+      }>;
     } else if (deadline.target_type === 'group' && deadline.group_id) {
-      targetedStudents = db
-        .prepare(
-          `
-        SELECT u.id, u.name, u.email
-        FROM users u
-        INNER JOIN group_members gm ON u.id = gm.user_id
-        WHERE gm.group_id = ?
-      `,
-        )
-        .all(deadline.group_id) as Array<{ id: string; name: string; email: string }>;
+      const userIds = groupMembersMap.get(deadline.group_id) || new Set();
+      targetedStudents = [...userIds].map((id) => allStudentMap.get(id)).filter(Boolean) as Array<{
+        id: string;
+        name: string;
+        email: string;
+      }>;
     } else {
-      targetedStudents = [] as Array<{ id: string; name: string; email: string }>;
+      targetedStudents = [];
     }
 
     let completedOnTime = 0;
@@ -5200,21 +4307,14 @@ export function getDeadlineCompliance(filters?: TimeRangeFilters): DeadlineCompl
     let totalOverdue = 0;
 
     for (const student of targetedStudents) {
-      const completion = db
-        .prepare(
-          `
-        SELECT completed_at FROM user_progress
-        WHERE user_id = ? AND task_id = ?
-      `,
-        )
-        .get(student.id, deadline.task_id || '') as { completed_at: number } | undefined;
+      const completionAt = deadline.task_id ? completionMap.get(`${student.id}:${deadline.task_id}`) : undefined;
 
-      if (completion) {
-        if (completion.completed_at <= deadline.due_at) {
+      if (completionAt !== undefined) {
+        if (completionAt <= deadline.due_at) {
           completedOnTime++;
         } else {
           completedLate++;
-          const daysOverdue = Math.round((completion.completed_at - deadline.due_at) / MS_PER_DAY);
+          const daysOverdue = Math.round((completionAt - deadline.due_at) / MS_PER_DAY);
           totalOverdue += daysOverdue;
           overdueStudents.push({
             user_id: student.id,
@@ -6337,19 +5437,28 @@ export function getHintUsageAnalytics(filters?: TimeRangeFilters): HintUsageAnal
     unique_students: number;
   }>;
 
-  const perTaskWithStats = perTask.map((t) => {
-    const taskProgress = (db
+  // Batch-fetch all task progress stats to avoid N+1
+  const taskIds = perTask.map((t) => t.task_id);
+  const taskProgressMap = new Map<string, { completions: number; avg_attempts: number }>();
+  if (taskIds.length > 0) {
+    const placeholders = taskIds.map(() => '?').join(',');
+    const taskProgressRows = db
       .prepare(
-        `
-      SELECT COUNT(*) as completions, ROUND(AVG(attempts * 1.0), 2) as avg_attempts
-      FROM user_progress WHERE task_id = ?
-    `,
+        `SELECT task_id, COUNT(*) as completions, ROUND(AVG(attempts * 1.0), 2) as avg_attempts
+         FROM user_progress WHERE task_id IN (${placeholders}) GROUP BY task_id`,
       )
-      .get(t.task_id) as { completions: number; avg_attempts: number }) || { completions: 0, avg_attempts: 0 };
+      .all(...taskIds) as Array<{ task_id: string; completions: number; avg_attempts: number }>;
+    for (const row of taskProgressRows) {
+      taskProgressMap.set(row.task_id, { completions: row.completions, avg_attempts: row.avg_attempts });
+    }
+  }
 
-    const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
-      count: number;
-    };
+  const totalStudents = db.prepare("SELECT COUNT(*) as count FROM users WHERE role = 'student'").get() as {
+    count: number;
+  };
+
+  const perTaskWithStats = perTask.map((t) => {
+    const taskProgress = taskProgressMap.get(t.task_id) || { completions: 0, avg_attempts: 0 };
 
     return {
       task_id: t.task_id,
@@ -6404,19 +5513,20 @@ export function getHintUsageAnalytics(filters?: TimeRangeFilters): HintUsageAnal
   const hintUsers = db.prepare('SELECT DISTINCT user_id FROM hint_usage').all() as Array<{ user_id: string }>;
   const hintUserIds = new Set(hintUsers.map((u) => u.user_id));
 
-  const allStudents = db.prepare("SELECT id FROM users WHERE role = 'student'").all() as Array<{ id: string }>;
+  // Batch-fetch avg attempts for all students to avoid N+1
+  const allStudentProgress = db
+    .prepare('SELECT user_id, AVG(attempts) as avg FROM user_progress GROUP BY user_id')
+    .all() as Array<{ user_id: string; avg: number | null }>;
+
   const withHintsAttempts: number[] = [];
   const withoutHintsAttempts: number[] = [];
 
-  for (const student of allStudents) {
-    const progress = db.prepare('SELECT AVG(attempts) as avg FROM user_progress WHERE user_id = ?').get(student.id) as {
-      avg: number | null;
-    };
-    if (progress.avg === null) continue;
-    if (hintUserIds.has(student.id)) {
-      withHintsAttempts.push(progress.avg);
+  for (const row of allStudentProgress) {
+    if (row.avg === null) continue;
+    if (hintUserIds.has(row.user_id)) {
+      withHintsAttempts.push(row.avg);
     } else {
-      withoutHintsAttempts.push(progress.avg);
+      withoutHintsAttempts.push(row.avg);
     }
   }
 
@@ -6708,7 +5818,7 @@ export function getWeekdayVsWeekendPerformance(filters?: TimeRangeFilters): Week
   const hourlyWeekday = db
     .prepare(
       `
-    SELECT CAST(STRFTIME('%H', DATE(completed_at / 1000, 'unixepoch')) AS INTEGER) as hour,
+    SELECT CAST(STRFTIME('%H', DATETIME(completed_at / 1000, 'unixepoch')) AS INTEGER) as hour,
            COUNT(*) as completions
     FROM user_progress
     WHERE CAST(STRFTIME('%w', DATE(completed_at / 1000, 'unixepoch')) AS INTEGER) BETWEEN 1 AND 5
@@ -6722,7 +5832,7 @@ export function getWeekdayVsWeekendPerformance(filters?: TimeRangeFilters): Week
   const hourlyWeekend = db
     .prepare(
       `
-    SELECT CAST(STRFTIME('%H', DATE(completed_at / 1000, 'unixepoch')) AS INTEGER) as hour,
+    SELECT CAST(STRFTIME('%H', DATETIME(completed_at / 1000, 'unixepoch')) AS INTEGER) as hour,
            COUNT(*) as completions
     FROM user_progress
     WHERE CAST(STRFTIME('%w', DATE(completed_at / 1000, 'unixepoch')) AS INTEGER) IN (0, 6)
@@ -8554,7 +7664,7 @@ export interface StudentAcademicSummary {
   total_attempts: number;
   streak_current: number;
   streak_longest: number;
-  achievements: Array<{ title: string; earned_at: number }>;
+  achievements: Array<{ id: string; title: string; earned_at: number }>;
   skill_breakdown: Array<{
     category: string;
     label: string;
@@ -8612,7 +7722,7 @@ export function getStudentAcademicSummary(userId: string): StudentAcademicSummar
   const achievements = db
     .prepare(
       `
-    SELECT a.title, ua.earned_at
+    SELECT a.id, a.title, ua.earned_at
     FROM user_achievements ua
     JOIN achievements a ON ua.achievement_id = a.id
     WHERE ua.user_id = ?
@@ -8620,7 +7730,7 @@ export function getStudentAcademicSummary(userId: string): StudentAcademicSummar
     LIMIT 10
   `,
     )
-    .all(userId) as Array<{ title: string; earned_at: number }>;
+    .all(userId) as Array<{ id: string; title: string; earned_at: number }>;
 
   // Skill breakdown
   const categories = [

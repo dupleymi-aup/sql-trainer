@@ -5,7 +5,7 @@ import { rateLimit, getClientIdentifier, RATE_LIMIT_WINDOWS } from '@/lib/rate-l
 import { executeMongoQuery } from '@/lib/mongodb-engine';
 import { apiServerError } from '@/lib/api-error';
 import { logger } from '@/lib/logger';
-import { auth } from '@/lib/auth';
+import { auth } from '@/lib/auth-internal';
 import type { MongoSchema } from '@/lib/mongodb-engine';
 import { parseAndValidate } from '@/lib/validation';
 import { sqlExecuteSchema, VALID_DB_TYPES } from '@/lib/sql-schema';

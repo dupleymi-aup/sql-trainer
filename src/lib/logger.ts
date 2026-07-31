@@ -45,8 +45,12 @@ function serializeError(error: unknown): LogEntry['error'] {
       message: error.message,
       stack: isDev ? error.stack : undefined,
     };
-    if ('code' in error && typeof (error as Record<string, unknown>).code === 'string') {
-      serialized.code = (error as { code: string }).code;
+    try {
+      if ('code' in error && typeof (error as Record<string, unknown>).code === 'string') {
+        serialized.code = (error as { code: string }).code;
+      }
+    } catch {
+      // 'code' in error may throw if error is null/undefined despite instanceof check
     }
     return serialized;
   }

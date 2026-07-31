@@ -4,8 +4,10 @@
  * The main auth.ts is Edge-compatible for proxy.
  */
 import NextAuth from 'next-auth';
+import type { JWT } from 'next-auth/jwt';
+import type { User } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { verifyPassword } from '@/lib/db-users';
+import { verifyPassword, type UserRole } from '@/lib/db-users';
 
 const nextAuth = NextAuth({
   providers: [
@@ -39,7 +41,17 @@ const nextAuth = NextAuth({
     signIn: '/login',
   },
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
+    async jwt({
+      token,
+      user,
+      trigger,
+      session,
+    }: {
+      token: JWT;
+      user?: User;
+      trigger?: 'signIn' | 'signUp' | 'update';
+      session?: { name?: string; phone?: string | null };
+    }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
@@ -50,46 +62,46 @@ const nextAuth = NextAuth({
       }
       if (trigger === 'update' && session) {
         token.name = session.name ?? token.name;
-        token.phone = session.phone ?? token.phone;
+        token.phone = (session.phone as string | null) ?? token.phone;
       }
       return token;
     },
-    async session({ session, token }) {
-      if (token) {
-        const tokenRoleChangedAt = token.role_changed_at as number | null | undefined;
-        const currentRole = token.role as import('@/lib/db-users').UserRole | undefined;
+    async session({ session, token }: { session: import('next-auth').Session; token: JWT }) {
+      const currentRole = token.role as UserRole | undefined;
 
-        if (currentRole) {
-          const db = (await import('@/lib/db-users')).getDb();
-          const dbUser = db
-            .prepare('SELECT role, role_changed_at, banned_at FROM users WHERE id = ?')
-            .get(token.id as string) as
-            { role: string; role_changed_at: number | null; banned_at: number | null } | undefined;
+      if (currentRole) {
+        const db = (await import('@/lib/db-users')).getDb();
+        const dbUser = db.prepare('SELECT role, role_changed_at, banned_at FROM users WHERE id = ?').get(token.id) as
+          { role: string; role_changed_at: number | null; banned_at: number | null } | undefined;
 
-          if (dbUser && dbUser.banned_at) {
-            session.user.id = '';
-            session.user.name = '';
-            session.user.email = '';
-            session.user.phone = null;
-            session.user.role = 'student' as const;
-            return session;
-          }
-
-          if (dbUser && dbUser.role_changed_at && tokenRoleChangedAt && dbUser.role_changed_at > tokenRoleChangedAt) {
-            session.user.id = '';
-            session.user.name = '';
-            session.user.email = '';
-            session.user.phone = null;
-            session.user.role = 'student' as const;
-            return session;
-          }
-
-          session.user.id = token.id as string;
-          session.user.name = token.name as string;
-          session.user.email = token.email as string;
-          session.user.phone = token.phone as string | null;
-          session.user.role = currentRole;
+        if (dbUser && dbUser.banned_at) {
+          session.user.id = '';
+          session.user.name = '';
+          session.user.email = '';
+          session.user.phone = null;
+          session.user.role = 'student';
+          return session;
         }
+
+        if (
+          dbUser &&
+          dbUser.role_changed_at &&
+          token.role_changed_at &&
+          dbUser.role_changed_at > token.role_changed_at
+        ) {
+          session.user.id = '';
+          session.user.name = '';
+          session.user.email = '';
+          session.user.phone = null;
+          session.user.role = 'student';
+          return session;
+        }
+
+        session.user.id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.phone = (token.phone as string | null) ?? null;
+        session.user.role = currentRole;
       }
       return session;
     },

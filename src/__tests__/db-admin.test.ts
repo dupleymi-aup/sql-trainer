@@ -123,4 +123,25 @@ describe('db/admin module', () => {
     const trail = getAuditTrail(10);
     expect(Array.isArray(trail)).toBe(true);
   });
+
+  it('getWeekdayVsWeekendPerformance reports correct hours', async () => {
+    const { createUser } = await import('@/lib/db/users');
+    const { getDb } = await import('@/lib/db/connection');
+    const user = await createUser('hourly@example.com', 'Hourly Test', 'pass123');
+
+    // Insert progress at a fixed UTC timestamp: Monday 14:30 UTC (hour 14)
+    const ts = new Date(Date.UTC(2026, 6, 13, 14, 30, 0, 0)); // Monday 2026-07-13
+    getDb()
+      .prepare('INSERT INTO user_progress (user_id, task_id, completed_at, attempts) VALUES (?, ?, ?, ?)')
+      .run(user!.id, 'beginner-1', ts.getTime(), 2);
+
+    const { getWeekdayVsWeekendPerformance } = await import('@/lib/db/analytics');
+    const report = getWeekdayVsWeekendPerformance();
+
+    // The completion must appear in hour 14 of weekday, not hour 0
+    const hour14 = report.hourly_weekday.find((h) => h.hour === 14);
+    const hour0 = report.hourly_weekday.find((h) => h.hour === 0);
+    expect(hour14?.completions).toBeGreaterThan(0);
+    expect(hour0?.completions || 0).toBeLessThan(hour14?.completions || 0);
+  });
 });

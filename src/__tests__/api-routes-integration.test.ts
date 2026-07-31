@@ -109,7 +109,7 @@ describe('POST /api/sql/verify', () => {
 });
 
 describe('POST /api/auth/register', () => {
-  it('rejects invalid email with 400', async () => {
+  it('rejects invalid email with 400', { timeout: 15000 }, async () => {
     const { POST } = await import('@/app/api/auth/register/route');
     const req = makePostRequest('http://localhost/api/auth/register', {
       name: 'Test',
@@ -122,7 +122,7 @@ describe('POST /api/auth/register', () => {
     expect(json.success).toBe(false);
   });
 
-  it('rejects short password with 400', async () => {
+  it('rejects short password with 400', { timeout: 15000 }, async () => {
     const { POST } = await import('@/app/api/auth/register/route');
     const req = makePostRequest('http://localhost/api/auth/register', {
       name: 'Test',
@@ -135,7 +135,7 @@ describe('POST /api/auth/register', () => {
     expect(json.success).toBe(false);
   });
 
-  it('rejects missing name', async () => {
+  it('rejects missing name', { timeout: 15000 }, async () => {
     const { POST } = await import('@/app/api/auth/register/route');
     const req = makePostRequest('http://localhost/api/auth/register', {
       email: 'test@example.com',

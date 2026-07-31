@@ -14,7 +14,7 @@ export interface PracticeModeState {
 
 export interface PracticeModeSlice {
   practiceMode: PracticeModeState;
-  startPracticeMode: (difficulty?: Difficulty | 'all') => void;
+  startPracticeMode: (difficulty?: Difficulty | 'all') => string | null;
   stopPracticeMode: () => void;
   nextPracticeTask: () => void;
 }

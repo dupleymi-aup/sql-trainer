@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Award, Clock } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { getAchievementKeys } from '@/lib/store/gamification-slice';
 import EmptyState from './empty-state';
 import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 
@@ -44,56 +45,61 @@ export default function AchievementAnalytics() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {data?.map((achievement) => (
-            <div key={achievement.id} className="p-4 rounded-lg border space-y-3">
-              <div className="flex items-start gap-3">
-                <Award className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-medium">{achievement.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{achievement.description}</p>
-                    </div>
-                    <Badge variant="outline" className="flex-shrink-0">
-                      {achievement.earn_rate}%
-                    </Badge>
-                  </div>
-
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                      <span>
-                        {achievement.earned_count}/{achievement.total_students}{' '}
-                        {t('analytics.achievements.earnRate').toLowerCase()}
-                      </span>
-                    </div>
-                    <Progress value={achievement.earn_rate} className="h-2" />
-                  </div>
-
-                  {achievement.recent_earners.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">
-                        {t('analytics.achievements.recent')}:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {achievement.recent_earners.map((earner) => (
-                          <div
-                            key={earner.user_id}
-                            className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded"
-                          >
-                            <Clock className="h-3 w-3" />
-                            <span>{earner.name}</span>
-                            <span className="text-muted-foreground">
-                              {new Date(earner.earned_at).toLocaleDateString(undefined)}
-                            </span>
-                          </div>
-                        ))}
+          {data?.map((achievement) => {
+            const keys = getAchievementKeys(achievement.id);
+            return (
+              <div key={achievement.id} className="p-4 rounded-lg border space-y-3">
+                <div className="flex items-start gap-3">
+                  <Award className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-medium">{keys?.titleKey ? t(keys.titleKey) : achievement.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {keys?.descriptionKey ? t(keys.descriptionKey) : achievement.description}
+                        </p>
                       </div>
+                      <Badge variant="outline" className="flex-shrink-0">
+                        {achievement.earn_rate}%
+                      </Badge>
                     </div>
-                  )}
+
+                    <div className="mt-2">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                        <span>
+                          {achievement.earned_count}/{achievement.total_students}{' '}
+                          {t('analytics.achievements.earnRate').toLowerCase()}
+                        </span>
+                      </div>
+                      <Progress value={achievement.earn_rate} className="h-2" />
+                    </div>
+
+                    {achievement.recent_earners.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          {t('analytics.achievements.recent')}:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {achievement.recent_earners.map((earner) => (
+                            <div
+                              key={earner.user_id}
+                              className="flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded"
+                            >
+                              <Clock className="h-3 w-3" />
+                              <span>{earner.name}</span>
+                              <span className="text-muted-foreground">
+                                {new Date(earner.earned_at).toLocaleDateString(undefined)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
     </Card>

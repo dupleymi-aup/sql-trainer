@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Rate limit: 15 explain requests per minute per client
-    const clientId = getClientIdentifier(request);
+    const clientId = getClientIdentifier(request, session.user.id);
     const limitResult = await rateLimit(`explain:${clientId}`, { max: 15, windowMs: RATE_LIMIT_WINDOWS.oneMinute });
     if (!limitResult.success) {
       return NextResponse.json({ success: false, error: 'Too many requests. Please wait' }, { status: 429 });

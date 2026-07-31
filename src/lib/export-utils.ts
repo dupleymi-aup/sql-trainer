@@ -18,7 +18,9 @@ export function exportToCSV(data: Record<string, unknown>[], columns: ExportColu
       .map((col) => {
         const value = row[col.key];
         const escaped = String(value ?? '').replace(/"/g, '""');
-        return `"${escaped}"`;
+        // Prevent CSV formula injection: prefix =, +, -, @ with a tab
+        const safe = /^[=+\-@]/.test(escaped) ? `\t${escaped}` : escaped;
+        return `"${safe}"`;
       })
       .join(',');
   });
@@ -82,17 +84,4 @@ export function exportToJSON(data: Record<string, unknown>[], filename: string):
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-export function formatDate(timestamp: number): string {
-  const d = new Date(timestamp);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-export function formatPercent(value: number): string {
-  return `${value}%`;
-}
-
-export function formatNumber(value: number): string {
-  return value.toString();
 }

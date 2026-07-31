@@ -100,6 +100,79 @@
 
 ---
 
+## План из 10 пунктов (2026-07-21) — сессия 8
+
+1. **[x] confirmAction fix** — удалён лишний `Promise.resolve()` вокруг синхронного `window.confirm` в `page.tsx`. Функция теперь синхронная, `resetDb` больше не использует `await`.
+2. **[x] PracticeModeSlice return type** — исправлен тип `startPracticeMode` с `void` на `string | null` для соответствия реальной реализации.
+3. **[x] Auth session type safety** — заменены `session: any` на `session: import('next-auth').Session` в `auth-internal.ts` и `auth.ts`. Удалены `eslint-disable` комментарии.
+4. **[x] Security headers consolidation** — добавлены `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, `Cross-Origin-Embedder-Policy` в `next.config.ts`. Выровнен CSP: добавлены `font-src data:`, `media-src none`, `object-src none`, `frame-src none`, `frame-ancestors none`, `upgrade-insecure-requests`. Теперь `next.config.ts` и `proxy.ts` содержат идентичные security headers.
+
+## План из 10 пунктов (2026-07-21) — сессия 9
+
+1. **[x] action-bar.tsx aria-labels** — добавлены `aria-label` на 12 кнопок: Execute, Verify, Explain, Undo, Redo, Clear History, Copy SQL, Clear, Reset DB, Bookmark, Previous/Next task.
+2. **[x] task-panel.tsx aria-labels** — добавлены `aria-label` на 5 кнопок: Next Task, Show Hint, Show/Hide Solution, Copy Solution, Use Solution.
+3. **[x] useKeyboardShortcuts performance** — рефакторинг хука: все переменные теперь читаются из `useRef` внутри обработчика, вместо включения в dependency array.
+4. **[x] performance-monitor memory leak fix** — добавлены `destroyPerformanceMonitor()` функция и трекинг активных `PerformanceObserver` и event listeners.
+5. **[x] sql-engine.ts dead code cleanup** — удалён мёртвый DROP-check блок в `validateInput()`. Упрощено условие `trimmed.includes(' ')` в `isSelectQuery()`.
+6. **[x] db-monitor.ts isAccessible tracking** — добавлено состояние `isAccessible` вместо хардкода `true`.
+
+## План из 10 пунктов (2026-07-21) — сессия 10
+
+1. **[x] web-vitals.tsx cleanup** — добавлен cleanup для `window.addEventListener('load')` и вызов `destroyPerformanceMonitor()` в useEffect return.
+2. **[x] api-auth.ts require() → import()** — заменён `require('@/lib/db-users')` на `await import('@/lib/db-users')` в `requireGroupOwnership()`.
+3. **[x] requireGroupOwnership callers** — обновлены 14 вызовов в 4 файлах для использования `await`.
+
+## План из 10 пунктов (2026-07-21) — сессия 11
+
+1. **[x] auth.ts type safety** — убраны `as unknown as Record<string, unknown>` касты для `user` и `token`. Поля доступны напрямую через augmented next-auth типы.
+2. **[x] auth-internal.ts type safety** — аналогично: убраны `as unknown as Record<string, unknown>` касты для `user` и `token`.
+3. **[x] i18n.ts type safety** — заменён `window as unknown as Record<string, unknown>` на `window as Window & { NEXT_PUBLIC_LOCALE?: string }`.
+4. **[x] admin/export route double-cast fix** — заменён двойной каст на одинарный.
+5. **[x] query-history.tsx aria-label** — добавлен `aria-label` на кнопку "Clear history" в dropdown.
+
+## План из 10 пунктов (2026-07-21) — сессия 13
+
+1. **[x] db/progress.ts async cleanup** — убраны лишние `async` из 5 функций: `saveUserProgress`, `getUserProgress`, `getUserAchievements`, `getAchievementDetails`, `checkAndAwardAchievements`. Ни одна из них не использует `await`, поэтому `Promise<T>` возвращаемый тип был误导ным.
+2. **[x] db/progress.ts N+1 fix** — `getAchievementDetails` переписана: вместо цикла с одиночными SELECT запросами используется один SELECT с IN clause. Снижает количество запросов с N до 1.
+3. **[x] db/progress.ts return type consistency** — `getUserProgress` и `getUserAchievements` теперь возвращают синхронные типы вместо `Promise<T>`, что совпадает с реальным поведением.
+
+## План из 10 пунктов (2026-07-21) — сессия 14
+
+1. **[x] ab-test.tsx double-cast fix** — заменён `json as unknown as ABTestData` на `json as ABTestData` (одинарный каст).
+
+## План из 10 пунктов (2026-07-21) — сессия 15
+
+1. **[x] db/recommendations.ts SQL safety** — заменён `String.replace()` для построения SQL запроса на шаблонную строку с `${placeholders}`. Убрана потенциальная проблема с SQL инъекцией через replace.
+
+---
+
+## План из 10 пунктов (2026-07-30) — сессия 16
+
+1. **[x] Линт: 19 non-null assertion fixes** — убраны `group!` из teacher API routes, `achievementKeys!` из admin analytics, `themeScriptRef.current!` из `theme-init-script.tsx`, dep array из `use-keyboard-shortcuts.ts`. Удалена неиспользуемая `baseDateCondition` из `analytics.ts`. Линт: 0 errors, 0 warnings.
+2. **[x] Prototype pollution fix (MongoDB engine)** — добавлена `isSafeKey()` проверка в `$unwind`, `$lookup`, `$count`, `$group` для блокировки `__proto__`/`constructor`/`prototype`.
+3. **[x] CSV formula injection fix** — значения, начинающиеся с `=`, `+`, `-`, `@`, получают tab-префикс в `export-utils.ts`.
+4. **[x] Logger crash fix** — `'code' in error` в `logger.ts:48` выбрасывал исключение на `null`/`undefined`; обёрнут в try/catch.
+5. **[x] Reminder schedule data loss fix** — `buildReminderSchedule` не оборачивал DELETE + INSERT в `db.transaction()`. Частичное выполнение могло удалить расписание без восстановления.
+6. **[x] Login race fix** — `recordFailedLogin` заменён с read-modify-write на атомарный `UPDATE ... SET failed_login_attempts = failed_login_attempts + 1`.
+7. **[x] Notification prefs race fix** — `getNotificationPreferences` переписан на `INSERT OR IGNORE` + re-read после insert.
+8. **[x] Lock reset race fix** — `getLoginLockStatus` использует `WHERE locked_until <= ?` для предотвращения двойного сброса блокировки.
+9. **[x] Full validation** — 884/884 тестов (57 файлов), lint 0 errors, TypeScript 0 errors, build clean.
+
+---
+
+## План из 10 пунктов (2026-07-30) — сессия 17
+
+1. **[x] UUID format validation** — добавлен `isValidUUID()` в `api-auth.ts`. Добавлена проверка формата UUID в 15 API route `[id]` файлов (admin users, admin deadlines, admin analytics student, teacher groups через `requireGroupOwnership`). 2 существующих teacher student route переведены на shared utility.
+2. **[x] Разделение `analytics.ts` (8878 строк)** — вынесены 860 строк в 4 новых файла:
+   - `analytics/groups.ts` (314 строк) — Group CRUD, members, notifyGroupMembers
+   - `analytics/deadlines.ts` (156 строк) — Deadline CRUD
+   - `analytics/reminders.ts` (236 строк) — Reminder schedule, pending reminders
+   - `analytics/notifications.ts` (154 строк) — Notification prefs, push subs, email queue
+   - analytics.ts сокращён с 8878 до 7056 строк (-20%)
+3. **[x] Full validation** — 884/884 тестов (57 файлов), lint 0 errors, TypeScript 0 errors, build clean.
+
+---
+
 ## Сводка текущего состояния
 
 | Показатель | Значение |
@@ -111,7 +184,7 @@
 | API эндпоинтов | 100+ (без документации) |
 | Задач для тренировки | 20 тем по SQL |
 | Поддерживаемых диалектов | 5 (SQLite, PG, ClickHouse, MySQL, MongoDB) |
-| Самый большой файл | `db-users.ts` (309 КБ) |
+| Самый большой файл | `db/analytics.ts` (7056 строк, сокращён с 8878) |
 | Второй по размеру | `i18n.ts` (327 КБ) |
 | Ветка | `main` |
 
@@ -612,13 +685,13 @@
 
 | Показатель | Значение |
 |------------|----------|
-| Тестов | **892/892** в 57 файлах (0 failed, все зелёные) |
+| Тестов | **884/884** в 57 файлах (0 failed, все зелёные) |
 | Покрытие | ~60%+ statements |
-| Лайнт | 0 ошибок, 0 предупреждений |
+| Линт | 0 ошибок, 0 предупреждений |
 | TypeScript | 0 ошибок |
 | Сборка | Next.js 16, Turbopack, standalone |
 | CI/CD | Multi-browser E2E, кэширование, Dependabot |
-| Последнее обновление | 2026-07-17 (auth wrapper migration, type cleanup, barrel imports) |
+| Последнее обновление | 2026-07-30 (runtime race fixes, prototype pollution fix, CSV injection fix, lint cleanup) |
 
 ### Выполненные пункты плана
 
@@ -641,6 +714,14 @@
 - [x] **Code splitting** — admin/teacher/dashboard/profile страницы переведены на dynamic imports
 - [x] **date-utils.test.ts** — добавлены 8 тестов для форматирования дат
 - [x] **CHANGELOG.md** — обновлён с описанием всех улучшений
+- [x] **Non-null assertion fixes** — 19 lint warning исправлений в teacher API routes, admin analytics, theme-init-script, use-keyboard-shortcuts
+- [x] **MongoDB prototype pollution** — `isSafeKey()` защита в mongodb-engine.ts
+- [x] **CSV formula injection** — tab-префикс для опасных значений в export-utils.ts
+- [x] **Logger crash** — try/catch для `'code' in error`
+- [x] **TOCTOU race (login counter)** — атомарный `UPDATE ... SET col = col + 1`
+- [x] **Reminder schedule transaction** — DELETE+INSERT в `db.transaction()`
+- [x] **Notification prefs race** — `INSERT OR IGNORE` + re-read
+- [x] **Login lock reset race** — conditional `WHERE locked_until <= ?`
 
 ### Архитектурные решения
 

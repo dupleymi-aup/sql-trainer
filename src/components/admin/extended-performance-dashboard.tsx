@@ -25,25 +25,7 @@ import {
 import { cn } from '@/lib/utils';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { exportPerformanceData, type ExportFormat } from '@/lib/performance-export';
-
-interface PerformanceStats {
-  metricName: string;
-  count: number;
-  avg: number;
-  p50: number;
-  p95: number;
-  p99: number;
-  worst: number;
-  good: number;
-  needsImprovement: number;
-  poor: number;
-}
-
-interface DailyMetric {
-  date: string;
-  avg: number;
-  count: number;
-}
+import type { PerformanceStats, DailyMetric, ErrorStat } from '@/lib/performance-types';
 
 interface LongTaskStat {
   metricName: string;
@@ -66,14 +48,6 @@ interface ResourceStat {
   avg_ttfb_ms: number;
   good: number;
   poor: number;
-}
-
-export interface ErrorStat {
-  error_type: string;
-  count: number;
-  message: string;
-  page: string;
-  worst: number;
 }
 
 export interface PerformanceData {

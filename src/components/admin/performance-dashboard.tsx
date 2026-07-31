@@ -11,29 +11,11 @@ import { t } from '@/lib/i18n';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { logger } from '@/lib/logger';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-
-interface WebVitalStats {
-  metricName: string;
-  count: number;
-  avg: number;
-  p50: number;
-  p95: number;
-  p99: number;
-  worst: number;
-  good: number;
-  needsImprovement: number;
-  poor: number;
-}
-
-interface DailyMetric {
-  date: string;
-  avg: number;
-  count: number;
-}
+import type { PerformanceStats, DailyMetric } from '@/lib/performance-types';
 
 interface PerformanceData {
   success: boolean;
-  stats: WebVitalStats[];
+  stats: PerformanceStats[];
   trend: DailyMetric[];
   worstPages: Array<{
     page: string;

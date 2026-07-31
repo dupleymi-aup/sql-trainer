@@ -49,7 +49,17 @@ const mockProgressResponse = {
   ],
   streak: { currentStreak: 3, longestStreak: 5, totalPracticeDays: 10 },
   userStats: { level: 2, xp: 150, levelProgress: 50 },
-  unlockedAchievements: [{ id: 'ach-1', title: 'First Steps', unlockedAt: Date.now() - 86400000 }],
+  unlockedAchievements: [
+    {
+      id: 'ach-1',
+      title: 'First Steps',
+      description: 'First step',
+      icon: '🎯',
+      titleKey: 'achievement.first_query.title',
+      descriptionKey: 'achievement.first_query.description',
+      unlockedAt: Date.now() - 86400000,
+    },
+  ],
 };
 
 const mockRecommendationsResponse = {

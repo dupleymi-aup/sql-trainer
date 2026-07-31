@@ -97,6 +97,7 @@ export default function ActionBar({
           className="h-8 sm:h-9 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 gap-1.5 text-xs sm:text-sm px-3 sm:px-4 shadow-lg shadow-emerald-500/20 transition-all"
           onClick={executeQuery}
           disabled={isExecuting || !editorContent.trim()}
+          aria-label={t('action.executeShort')}
         >
           {isExecuting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
           <span className="hidden sm:inline font-semibold">{t('action.executeShort')}</span>
@@ -114,6 +115,7 @@ export default function ActionBar({
                 className="h-8 text-xs sm:text-sm border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 hover:border-emerald-400 dark:hover:border-emerald-600 transition-all"
                 onClick={executeVerify}
                 disabled={isExecuting || !editorContent.trim()}
+                aria-label={t('action.verify')}
               >
                 <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                 <span className="hidden sm:inline font-medium">{t('action.verify')}</span>
@@ -132,6 +134,7 @@ export default function ActionBar({
                 className="h-8 text-xs sm:text-sm hover:bg-muted transition-all"
                 onClick={executeExplain}
                 disabled={isExecuting || !editorContent.trim()}
+                aria-label={t('action.explain')}
               >
                 <Search className="mr-1 h-3.5 w-3.5" />
                 <span className="hidden sm:inline font-medium">{t('action.explain')}</span>
@@ -155,6 +158,7 @@ export default function ActionBar({
               className="h-8 text-xs sm:text-sm hover:bg-muted/70 transition-all"
               onClick={onUndo}
               disabled={!canUndo}
+              aria-label={t('action.undo')}
             >
               <Undo2 className="h-4 w-4" />
               <kbd className="ml-1.5 h-3.5 items-center rounded border border-current/20 bg-current/10 px-1 text-[9px] font-mono hidden sm:inline-flex">
@@ -173,6 +177,7 @@ export default function ActionBar({
               className="h-8 text-xs sm:text-sm hover:bg-muted/70 transition-all"
               onClick={onRedo}
               disabled={!canRedo}
+              aria-label={t('action.redo')}
             >
               <Redo2 className="h-4 w-4" />
               <kbd className="ml-1.5 h-3.5 items-center rounded border border-current/20 bg-current/10 px-1 text-[9px] font-mono hidden sm:inline-flex">
@@ -199,6 +204,7 @@ export default function ActionBar({
                     clearHistory();
                   }
                 }}
+                aria-label={t('action.clearHistory', { default: 'Clear history' })}
               >
                 <History className="h-3.5 w-3.5" />
               </Button>
@@ -219,6 +225,7 @@ export default function ActionBar({
               onClick={() => {
                 navigator.clipboard.writeText(editorContent).catch(() => {});
               }}
+              aria-label={t('action.copySql', { default: 'Copy SQL' })}
             >
               <ClipboardCopy className="h-3.5 w-3.5" />
             </Button>
@@ -238,6 +245,7 @@ export default function ActionBar({
               return;
             clearEditor();
           }}
+          aria-label={t('action.clear')}
         >
           <Trash2 className="mr-1 h-3.5 w-3.5" />
           <span className="hidden sm:inline font-medium">{t('action.clear')}</span>
@@ -249,6 +257,7 @@ export default function ActionBar({
             size="sm"
             className="h-8 text-xs sm:text-sm hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-600 dark:hover:text-amber-400 transition-all"
             onClick={resetDb}
+            aria-label={t('action.resetDb')}
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" />
             <span className="hidden sm:inline font-medium">{t('action.resetDb')}</span>
@@ -294,6 +303,7 @@ export default function ActionBar({
                 size="sm"
                 className={`h-8 w-8 p-0 transition-all ${isBookmarked ? 'text-amber-500 hover:text-amber-600' : 'text-muted-foreground hover:text-amber-500'}`}
                 onClick={() => toggleBookmark(currentTask.id)}
+                aria-label={isBookmarked ? t('action.removeFromBookmark') : t('action.addToBookmark')}
               >
                 <Bookmark className={`h-4 w-4 ${isBookmarked ? 'fill-amber-500' : ''}`} />
               </Button>
@@ -315,6 +325,7 @@ export default function ActionBar({
                   onClick={() => {
                     if (hasPrev) setCurrentTaskId(TRAINING_TASKS[taskIndex - 1].id);
                   }}
+                  aria-label={t('task.prev', { default: 'Previous task' })}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -336,6 +347,7 @@ export default function ActionBar({
                   onClick={() => {
                     if (hasNext) setCurrentTaskId(TRAINING_TASKS[taskIndex + 1].id);
                   }}
+                  aria-label={t('task.next', { default: 'Next task' })}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>

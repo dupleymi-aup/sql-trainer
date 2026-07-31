@@ -115,7 +115,8 @@ export default function SystemHealth() {
     },
   };
 
-  const StatusIcon = statusConfig[health.db_connection_status].icon;
+  const dbStatus = statusConfig[health.db_connection_status] || statusConfig.healthy;
+  const StatusIcon = dbStatus.icon;
 
   const summaryCards = [
     {
@@ -177,12 +178,9 @@ export default function SystemHealth() {
             {t('admin.health.title')}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={`flex items-center gap-1 px-3 py-1 ${statusConfig[health.db_connection_status].color}`}
-            >
+            <Badge variant="outline" className={`flex items-center gap-1 px-3 py-1 ${dbStatus.color}`}>
               <StatusIcon className="h-3.5 w-3.5" />
-              {statusConfig[health.db_connection_status].label}
+              {dbStatus.label}
             </Badge>
             <button
               onClick={() => fetchData(true)}

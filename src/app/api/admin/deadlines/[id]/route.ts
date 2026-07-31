@@ -1,4 +1,4 @@
-import { withTeacherAuth } from '@/lib/api-auth';
+import { withTeacherAuth, isValidUUID } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
 import { updateDeadline, deleteDeadline, getDeadlineById } from '@/lib/db-users';
 import { z } from 'zod';
@@ -6,8 +6,14 @@ import { parseAndValidate } from '@/lib/validation';
 
 const updateDeadlineSchema = z
   .object({
-    title: z.string().optional(),
-    description: z.string().optional(),
+    title: z
+      .string()
+      .optional()
+      .refine((s) => !s || !/<[^>]*>/.test(s), 'HTML content is not allowed in title'),
+    description: z
+      .string()
+      .optional()
+      .refine((s) => !s || !/<[^>]*>/.test(s), 'HTML content is not allowed in description'),
     dueDate: z.string().datetime().optional(),
     courseId: z.string().optional(),
   })
@@ -16,8 +22,8 @@ const updateDeadlineSchema = z
   });
 
 export const PUT = withTeacherAuth(async ({ session, request, params }) => {
-  if (!params?.id) {
-    return NextResponse.json({ success: false, error: 'Deadline ID is required' }, { status: 400 });
+  if (!params?.id || !isValidUUID(params.id)) {
+    return NextResponse.json({ success: false, error: 'Invalid deadline ID format' }, { status: 400 });
   }
   const { id } = params;
   const existing = getDeadlineById(id);
@@ -38,8 +44,8 @@ export const PUT = withTeacherAuth(async ({ session, request, params }) => {
 });
 
 export const DELETE = withTeacherAuth(async ({ session, params }) => {
-  if (!params?.id) {
-    return NextResponse.json({ success: false, error: 'Deadline ID is required' }, { status: 400 });
+  if (!params?.id || !isValidUUID(params.id)) {
+    return NextResponse.json({ success: false, error: 'Invalid deadline ID format' }, { status: 400 });
   }
   const { id } = params;
   const success = deleteDeadline(id, session.user.id, session.user.id);

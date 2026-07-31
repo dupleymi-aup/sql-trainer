@@ -1,25 +1,6 @@
+import type { PerformanceStats, ErrorStat } from '@/lib/performance-types';
+
 export type ExportFormat = 'csv' | 'json' | 'pdf';
-
-interface PerformanceStats {
-  metricName: string;
-  count: number;
-  avg: number;
-  p50: number;
-  p95: number;
-  p99: number;
-  worst: number;
-  good: number;
-  needsImprovement: number;
-  poor: number;
-}
-
-interface ErrorStat {
-  error_type: string;
-  count: number;
-  message: string;
-  page: string;
-  worst: number;
-}
 
 interface PerformanceData {
   webVitals: PerformanceStats[];

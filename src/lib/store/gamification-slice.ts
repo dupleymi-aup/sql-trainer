@@ -10,6 +10,8 @@ export interface Achievement {
   title: string;
   description: string;
   icon: string;
+  titleKey: string;
+  descriptionKey: string;
   unlockedAt?: number;
 }
 
@@ -27,140 +29,193 @@ export const ACHIEVEMENTS: Record<string, Omit<Achievement, 'unlockedAt'>> = {
     title: 'First Step',
     description: 'Execute your first SQL query',
     icon: '🎯',
+    titleKey: 'achievement.first_query.title',
+    descriptionKey: 'achievement.first_query.description',
   },
   BEGINNER_COMPLETE: {
     id: 'beginner_complete',
     title: 'Beginner',
     description: 'Complete all beginner level tasks',
     icon: '🌱',
+    titleKey: 'achievement.beginner_complete.title',
+    descriptionKey: 'achievement.beginner_complete.description',
   },
   INTERMEDIATE_COMPLETE: {
     id: 'intermediate_complete',
     title: 'Professional',
     description: 'Complete all intermediate level tasks',
     icon: '⭐',
+    titleKey: 'achievement.intermediate_complete.title',
+    descriptionKey: 'achievement.intermediate_complete.description',
   },
   ADVANCED_COMPLETE: {
     id: 'advanced_complete',
     title: 'Expert',
     description: 'Complete all advanced level tasks',
     icon: '🏆',
+    titleKey: 'achievement.advanced_complete.title',
+    descriptionKey: 'achievement.advanced_complete.description',
   },
   PERFECT_SCORE: {
     id: 'perfect_score',
     title: 'Perfect!',
     description: 'Solve a task on the first attempt',
     icon: '💯',
+    titleKey: 'achievement.perfect_score.title',
+    descriptionKey: 'achievement.perfect_score.description',
   },
   MARATHON: {
     id: 'marathon',
     title: 'Marathon',
     description: 'Solve 10 tasks in a row',
     icon: '🔥',
+    titleKey: 'achievement.marathon.title',
+    descriptionKey: 'achievement.marathon.description',
   },
   MASTER: {
     id: 'master',
     title: 'SQL Master',
     description: 'Complete all tasks',
     icon: '👑',
+    titleKey: 'achievement.master.title',
+    descriptionKey: 'achievement.master.description',
   },
   EXPLAIN_MASTER: {
     id: 'explain_master',
     title: 'Analyst',
     description: 'Use EXPLAIN 10 times',
     icon: '📊',
+    titleKey: 'achievement.explain_master.title',
+    descriptionKey: 'achievement.explain_master.description',
   },
   HISTORY_KEEPER: {
     id: 'history_keeper',
     title: 'Historian',
     description: 'Save 20 queries in history',
     icon: '📚',
+    titleKey: 'achievement.history_keeper.title',
+    descriptionKey: 'achievement.history_keeper.description',
   },
   STREAK_3: {
     id: 'streak_3',
     title: 'On a Roll',
     description: 'Practice streak of 3 days',
     icon: '🔥',
+    titleKey: 'achievement.streak_3.title',
+    descriptionKey: 'achievement.streak_3.description',
   },
   STREAK_5: {
     id: 'streak_5',
     title: 'Unstoppable',
     description: 'Practice streak of 5 days',
     icon: '💥',
+    titleKey: 'achievement.streak_5.title',
+    descriptionKey: 'achievement.streak_5.description',
   },
   FIRST_JOIN: {
     id: 'first_join',
     title: 'Join Master',
     description: 'Execute your first query with JOIN',
     icon: '🔗',
+    titleKey: 'achievement.first_join.title',
+    descriptionKey: 'achievement.first_join.description',
   },
   FIRST_WINDOW: {
     id: 'first_window',
     title: 'Window Master',
     description: 'Execute your first query with a window function',
     icon: '🪟',
+    titleKey: 'achievement.first_window.title',
+    descriptionKey: 'achievement.first_window.description',
   },
   FIRST_CTE: {
     id: 'first_cte',
     title: 'CTE Master',
     description: 'Execute your first query with CTE (WITH)',
     icon: '📋',
+    titleKey: 'achievement.first_cte.title',
+    descriptionKey: 'achievement.first_cte.description',
   },
   FIRST_SUBQUERY: {
     id: 'first_subquery',
     title: 'Subquery',
     description: 'Execute your first query with a subquery',
     icon: '🔍',
+    titleKey: 'achievement.first_subquery.title',
+    descriptionKey: 'achievement.first_subquery.description',
   },
   HINT_FREE: {
     id: 'hint_free',
     title: 'Independent',
     description: 'Solve 5 tasks without hints',
     icon: '🧠',
+    titleKey: 'achievement.hint_free.title',
+    descriptionKey: 'achievement.hint_free.description',
   },
   AGGREGATE_MASTER: {
     id: 'aggregate_master',
     title: 'Aggregator',
     description: 'Solve 10 tasks with GROUP BY and aggregate functions',
     icon: '📊',
+    titleKey: 'achievement.aggregate_master.title',
+    descriptionKey: 'achievement.aggregate_master.description',
   },
   COMPANY_COMPLETE: {
     id: 'company_complete',
     title: 'Corporate Analyst',
     description: 'Solve all tasks in the Company category',
     icon: '🏢',
+    titleKey: 'achievement.company_complete.title',
+    descriptionKey: 'achievement.company_complete.description',
   },
   SHOP_COMPLETE: {
     id: 'shop_complete',
     title: 'E-commerce Expert',
     description: 'Solve all tasks in the Shop category',
     icon: '🛒',
+    titleKey: 'achievement.shop_complete.title',
+    descriptionKey: 'achievement.shop_complete.description',
   },
   ANALYTICS_COMPLETE: {
     id: 'analytics_complete',
     title: 'Data Analyst',
     description: 'Solve all tasks in the Analytics category',
     icon: '📈',
+    titleKey: 'achievement.analytics_complete.title',
+    descriptionKey: 'achievement.analytics_complete.description',
   },
   STREAK_7: {
     id: 'streak_7',
     title: 'Week of Practice',
     description: 'Practice streak of 7 days',
     icon: '🔥',
+    titleKey: 'achievement.streak_7.title',
+    descriptionKey: 'achievement.streak_7.description',
   },
   STREAK_14: {
     id: 'streak_14',
     title: 'Two Weeks',
     description: 'Practice streak of 14 days',
     icon: '💎',
+    titleKey: 'achievement.streak_14.title',
+    descriptionKey: 'achievement.streak_14.description',
   },
   STREAK_30: {
     id: 'streak_30',
     title: 'Month of Practice',
     description: 'Practice streak of 30 days',
     icon: '👑',
+    titleKey: 'achievement.streak_30.title',
+    descriptionKey: 'achievement.streak_30.description',
   },
 } as const;
+
+/** Look up i18n keys for an achievement by its ID. Returns null if not found. */
+export function getAchievementKeys(id: string): { titleKey: string; descriptionKey: string } | null {
+  const achievement = Object.values(ACHIEVEMENTS).find((a) => a.id === id);
+  if (!achievement) return null;
+  return { titleKey: achievement.titleKey, descriptionKey: achievement.descriptionKey };
+}
 
 export interface GamificationSlice {
   userStats: UserStats;
@@ -245,7 +300,7 @@ export const createGamificationSlice: StateCreator<GamificationSlice, [], [], Ga
     const totalCount = completedTasks.length;
 
     // First query
-    if (totalCount === 1 && !achievementSet.has(ACHIEVEMENTS.FIRST_QUERY.id)) {
+    if (totalCount >= 1 && !achievementSet.has(ACHIEVEMENTS.FIRST_QUERY.id)) {
       newAchievementIds.push(ACHIEVEMENTS.FIRST_QUERY.id);
       achievementSet.add(ACHIEVEMENTS.FIRST_QUERY.id);
     }

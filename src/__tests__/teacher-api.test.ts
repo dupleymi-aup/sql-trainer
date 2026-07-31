@@ -69,6 +69,32 @@ vi.mock('@/lib/api-auth', () => ({
       });
     };
   },
+  requireGroupOwnership: async (
+    groupId: string | undefined,
+    teacherId: string,
+  ): Promise<{ error: Response | null; group: { id: string; teacher_id: string; name: string } | null }> => {
+    if (!groupId) {
+      return {
+        error: new Response(JSON.stringify({ success: false, error: 'Group ID is required' }), { status: 400 }),
+        group: null,
+      };
+    }
+    // Use the already-mocked db module
+    const group = mockDb.getGroupById(groupId);
+    if (!group) {
+      return {
+        error: new Response(JSON.stringify({ success: false, error: 'Group not found' }), { status: 404 }),
+        group: null,
+      };
+    }
+    if (group.teacher_id !== teacherId) {
+      return {
+        error: new Response(JSON.stringify({ success: false, error: 'Forbidden' }), { status: 403 }),
+        group: null,
+      };
+    }
+    return { error: null, group: group as { id: string; teacher_id: string; name: string } };
+  },
 }));
 
 // Mock validation to pass through

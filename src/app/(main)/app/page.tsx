@@ -109,7 +109,7 @@ export default function HomePage() {
     for (const achievement of unlockedAchievements) {
       if (achievement.unlockedAt && !shownAchievementIdsRef.current.has(achievement.id)) {
         toast.success(t('achievement.toast.title'), {
-          description: t('achievement.toast.description', { title: achievement.title }),
+          description: t('achievement.toast.description', { title: t(achievement.titleKey) }),
           duration: 5000,
         });
         shownAchievementIdsRef.current.add(achievement.id);
@@ -171,8 +171,8 @@ export default function HomePage() {
     };
   }, [session?.user]);
 
-  const confirmAction = useCallback((message: string): Promise<boolean> => {
-    return Promise.resolve(window.confirm(message));
+  const confirmAction = useCallback((message: string) => {
+    return window.confirm(message);
   }, []);
 
   // Get current task
@@ -244,7 +244,7 @@ export default function HomePage() {
 
   // Reset DB (re-init task)
   const resetDb = async () => {
-    const confirmed = await confirmAction(
+    const confirmed = confirmAction(
       t('app.resetDbConfirm', {
         default: 'Are you sure you want to reset the database? All unsaved changes will be lost.',
       }),

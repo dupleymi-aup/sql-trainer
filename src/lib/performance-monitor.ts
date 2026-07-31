@@ -6,9 +6,7 @@
  * - Resource Timing (JS, CSS, Images, Fonts, Fetch/XHR)
  * - Custom Performance Marks/Metrics
  * - Network Information API
- * - Memory API (Chrome/Edge)
  * - Error tracking
- * - SQL Query performance
  */
 
 // ============ NON-STANDARD BROWSER API TYPES ============
@@ -75,6 +73,11 @@ export function getConnectionInfo(): Record<string, string | null> {
   };
 }
 
+// ============ CLEANUP TRACKING ============
+
+const activeObservers: PerformanceObserver[] = [];
+const activeListeners: Array<{ target: EventTarget; type: string; listener: EventListener }> = [];
+
 // ============ LONG TASKS ============
 
 export function observeLongTasks(onMetric: (metric: PerformanceMetric) => void): void {
@@ -107,6 +110,7 @@ export function observeLongTasks(onMetric: (metric: PerformanceMetric) => void):
     });
 
     observer.observe({ entryTypes: ['longtask'] });
+    activeObservers.push(observer);
   } catch {
     // Long Tasks API not supported
   }
@@ -185,6 +189,7 @@ export function observeResources(onMetric: (metric: PerformanceMetric) => void):
       });
 
       observer.observe({ entryTypes: ['resource'], type });
+      activeObservers.push(observer);
     } catch {
       // Resource type not supported for observation
     }
@@ -213,34 +218,9 @@ export function measure(name: string, startMark?: string, endMark?: string): voi
   }
 }
 
-export function getMeasurements(): Array<{ name: string; duration: number }> {
-  try {
-    const entries = performance.getEntriesByType('measure') as PerformanceMeasure[];
-    return entries.map((m) => ({
-      name: m.name,
-      duration: m.duration,
-    }));
-  } catch {
-    return [];
-  }
-}
-
-// ============ MEMORY API (Chrome/Edge only) ============
-
-export function getMemoryInfo(): { usedHeap: number; totalHeap: number | null; ratio: number } | null {
-  // performance.memory is Chrome-only, not in standard lib types
-  const mem = (performance as unknown as { memory?: { usedJSHeapSize: number; totalJSHeapSize: number } }).memory;
-  if (!mem) return null;
-  return {
-    usedHeap: mem.usedJSHeapSize,
-    totalHeap: mem.totalJSHeapSize,
-    ratio: mem.usedJSHeapSize / mem.totalJSHeapSize,
-  };
-}
-
 // ============ ERROR TRACKING ============
 
-export interface ErrorReport {
+interface ErrorReport {
   type: 'error' | 'unhandledrejection';
   message: string;
   stack?: string;
@@ -253,7 +233,7 @@ export interface ErrorReport {
   collectedAt: number;
 }
 
-export function sendErrorReport(error: ErrorReport, onMetric: (metric: PerformanceMetric) => void): void {
+function sendErrorReport(error: ErrorReport, onMetric: (metric: PerformanceMetric) => void): void {
   const metric: PerformanceMetric = {
     type: 'error',
     name: 'RuntimeError',
@@ -272,48 +252,6 @@ export function sendErrorReport(error: ErrorReport, onMetric: (metric: Performan
     errorColumn: error.colno,
   };
   onMetric(metric);
-}
-
-// ============ SQL QUERY TRACKING ============
-
-export interface SqlQueryMetric {
-  queryType: string;
-  executionTimeMs: number;
-  rowsReturned: number;
-  hasError: boolean;
-  errorMessage?: string;
-  dbType: string;
-  taskId?: string;
-  userId?: string;
-}
-
-let sqlQueryCount = 0;
-
-export function trackSqlQuery(metric: SqlQueryMetric): void {
-  sqlQueryCount++;
-  const id = `sql-${sqlQueryCount}`;
-
-  const perfMetric: PerformanceMetric = {
-    type: 'sql_query',
-    name: `SQL:${metric.queryType}`,
-    value: metric.executionTimeMs,
-    rating: metric.executionTimeMs < 50 ? 'good' : metric.executionTimeMs < 200 ? 'needs-improvement' : 'poor',
-    delta: metric.executionTimeMs,
-    id,
-    navigationType: 'navigate',
-    page: window.location.pathname,
-    deviceType: getDeviceType(),
-    userAgent: navigator.userAgent,
-    queryType: metric.queryType,
-    rowsReturned: metric.rowsReturned,
-    hasError: metric.hasError,
-    errorMessage: metric.errorMessage,
-    dbType: metric.dbType,
-    taskId: metric.taskId,
-    userId: metric.userId,
-  };
-
-  sendToApi(perfMetric);
 }
 
 // ============ API TRANSPORT ============
@@ -351,7 +289,7 @@ export function initPerformanceMonitor(onMetric?: (metric: PerformanceMetric) =>
 
   // Error tracking
   if (typeof window !== 'undefined') {
-    window.addEventListener('error', (e) => {
+    const errorHandler = (e: ErrorEvent) => {
       sendErrorReport(
         {
           type: 'error',
@@ -367,9 +305,9 @@ export function initPerformanceMonitor(onMetric?: (metric: PerformanceMetric) =>
         },
         transport,
       );
-    });
+    };
 
-    window.addEventListener('unhandledrejection', (e) => {
+    const rejectionHandler = (e: PromiseRejectionEvent) => {
       sendErrorReport(
         {
           type: 'unhandledrejection',
@@ -382,8 +320,39 @@ export function initPerformanceMonitor(onMetric?: (metric: PerformanceMetric) =>
         },
         transport,
       );
-    });
+    };
+
+    window.addEventListener('error', errorHandler);
+    window.addEventListener('unhandledrejection', rejectionHandler);
+    activeListeners.push(
+      { target: window, type: 'error', listener: errorHandler as EventListener },
+      { target: window, type: 'unhandledrejection', listener: rejectionHandler as EventListener },
+    );
   }
+}
+
+/**
+ * Destroy the performance monitor: disconnect all observers and remove event listeners.
+ * Call this during cleanup to prevent memory leaks.
+ */
+export function destroyPerformanceMonitor(): void {
+  for (const observer of activeObservers) {
+    try {
+      observer.disconnect();
+    } catch {
+      // already disconnected
+    }
+  }
+  activeObservers.length = 0;
+
+  for (const { target, type, listener } of activeListeners) {
+    try {
+      target.removeEventListener(type, listener);
+    } catch {
+      // already removed
+    }
+  }
+  activeListeners.length = 0;
 }
 
 // Auto-initialize when module loads (only on client)

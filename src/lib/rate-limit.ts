@@ -70,6 +70,19 @@ if (typeof cleanupInterval.unref === 'function') {
   cleanupInterval.unref();
 }
 
+// Cleanup interval on process exit / signals to prevent leaks in serverless
+const cleanupTimer = () => {
+  if (globalThis.__sqlTrainerCleanupInterval) {
+    clearInterval(globalThis.__sqlTrainerCleanupInterval);
+    globalThis.__sqlTrainerCleanupInterval = undefined;
+  }
+};
+if (typeof process !== 'undefined' && typeof process.on === 'function') {
+  process.on('exit', cleanupTimer);
+  process.on('SIGINT', cleanupTimer);
+  process.on('SIGTERM', cleanupTimer);
+}
+
 /**
  * Synchronous in-memory rate limit (for tests and direct usage).
  */

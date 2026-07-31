@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSQLTrainerStore } from '@/lib/store';
 import { getNextHintLevel, generateProgressiveHints, calculateHintPenalty } from '@/lib/progressive-hints';
 import { t } from '@/lib/i18n';
@@ -44,72 +44,7 @@ export function useKeyboardShortcuts({
   toggleBookmark,
   currentTaskId,
 }: UseKeyboardShortcutsOptions) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        executeQuery();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
-        e.preventDefault();
-        setEditorContent('');
-        setLastResult(null);
-        setVerification(null);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
-        e.preventDefault();
-        const nextLevel = getNextHintLevel(hintLevel);
-        if (nextLevel !== null && currentTask) {
-          setHintLevel(nextLevel);
-          const hints = generateProgressiveHints(
-            currentTask.id,
-            currentTask.hint,
-            currentTask.taskText,
-            currentTask.progressiveHints,
-          );
-          setTotalHintPenalty(calculateHintPenalty(hints, nextLevel));
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
-        e.preventDefault();
-        setSolutionVisible(!solutionVisible);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
-        e.preventDefault();
-        setEditorContent(formatSQL(editorContent));
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        setSidebarOpen(!sidebarOpen);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
-        e.preventDefault();
-        if (currentTaskId) toggleBookmark(currentTaskId);
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
-        e.preventDefault();
-        executeQuery();
-        if (currentTaskId) executeVerify?.();
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'X') {
-        e.preventDefault();
-        const { clearHistory } = useSQLTrainerStore.getState();
-        if (window.confirm(t('action.clearHistoryConfirm', { default: 'Clear query history?' }))) {
-          clearHistory();
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
-        e.preventDefault();
-        const cycle: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
-        const idx = cycle.indexOf((theme as 'light' | 'dark' | 'system') || 'system');
-        const next = cycle[(idx + 1) % cycle.length];
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('next-theme', next);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
+  const refsRef = useRef({
     executeQuery,
     executeVerify,
     hintLevel,
@@ -127,5 +62,95 @@ export function useKeyboardShortcuts({
     theme,
     toggleBookmark,
     currentTaskId,
-  ]);
+  });
+  useEffect(() => {
+    refsRef.current = {
+      executeQuery,
+      executeVerify,
+      hintLevel,
+      setHintLevel,
+      solutionVisible,
+      setSolutionVisible,
+      setEditorContent,
+      setLastResult,
+      setVerification,
+      setTotalHintPenalty,
+      editorContent,
+      currentTask,
+      sidebarOpen,
+      setSidebarOpen,
+      theme,
+      toggleBookmark,
+      currentTaskId,
+    };
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const r = refsRef.current;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        r.executeQuery();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        r.setEditorContent('');
+        r.setLastResult(null);
+        r.setVerification(null);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'H') {
+        e.preventDefault();
+        const nextLevel = getNextHintLevel(r.hintLevel);
+        if (nextLevel !== null && r.currentTask) {
+          r.setHintLevel(nextLevel);
+          const hints = generateProgressiveHints(
+            r.currentTask.id,
+            r.currentTask.hint,
+            r.currentTask.taskText,
+            r.currentTask.progressiveHints,
+          );
+          r.setTotalHintPenalty(calculateHintPenalty(hints, nextLevel));
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        r.setSolutionVisible(!r.solutionVisible);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+        e.preventDefault();
+        r.setEditorContent(formatSQL(r.editorContent));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        r.setSidebarOpen(!r.sidebarOpen);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
+        e.preventDefault();
+        if (r.currentTaskId) r.toggleBookmark(r.currentTaskId);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'E') {
+        e.preventDefault();
+        r.executeQuery();
+        if (r.currentTaskId) r.executeVerify?.();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'X') {
+        e.preventDefault();
+        const { clearHistory } = useSQLTrainerStore.getState();
+        if (window.confirm(t('action.clearHistoryConfirm', { default: 'Clear query history?' }))) {
+          clearHistory();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'D') {
+        e.preventDefault();
+        const cycle: Array<'light' | 'dark' | 'system'> = ['light', 'dark', 'system'];
+        const idx = cycle.indexOf((r.theme as 'light' | 'dark' | 'system') || 'system');
+        const next = cycle[(idx + 1) % cycle.length];
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('next-theme', next);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 }

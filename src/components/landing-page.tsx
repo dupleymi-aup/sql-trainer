@@ -307,7 +307,7 @@ const NAV_LINKS = [
   { href: '#faq', labelKey: 'landing.nav.faq' },
 ];
 
-function AuthSidebar({ t }: { t: (key: string) => string }) {
+function AuthSidebar({ t, locale }: { t: (key: string) => string; locale?: Locale }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -332,7 +332,7 @@ function AuthSidebar({ t }: { t: (key: string) => string }) {
             {t('landing.hero.startTraining')}
           </Button>
         </Link>
-        <LocaleSelector />
+        <LocaleSelector serverLocale={locale} />
       </aside>
 
       {/* Mobile overlay */}
@@ -361,7 +361,7 @@ function AuthSidebar({ t }: { t: (key: string) => string }) {
                 {t('landing.hero.startTraining')}
               </Button>
             </Link>
-            <LocaleSelector />
+            <LocaleSelector serverLocale={locale} />
           </div>
         </div>
       )}
@@ -422,8 +422,8 @@ export default function LandingPage({ locale }: { locale?: Locale }) {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <ThemeToggle size="sm" />
-              <AuthSidebar t={t} />
+              <ThemeToggle size="sm" locale={resolvedLocale} />
+              <AuthSidebar t={t} locale={resolvedLocale} />
             </div>
           </div>
         </header>

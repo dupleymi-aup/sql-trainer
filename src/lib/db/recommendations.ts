@@ -47,12 +47,10 @@ export function getStudentRecommendations(userId: string): StudentRecommendation
 
   if (struggleTasks.length > 0) {
     const weakTaskIds = struggleTasks.map((t) => t.task_id);
+    const placeholders = weakTaskIds.map(() => '?').join(',');
     const weakTasks = db
       .prepare(
-        'SELECT task_id, MAX(attempts) as max_attempts FROM user_progress WHERE user_id = ? AND task_id IN (${placeholders}) GROUP BY task_id ORDER BY max_attempts DESC LIMIT 3'.replace(
-          '${placeholders}',
-          weakTaskIds.map(() => '?').join(','),
-        ),
+        `SELECT task_id, MAX(attempts) as max_attempts FROM user_progress WHERE user_id = ? AND task_id IN (${placeholders}) GROUP BY task_id ORDER BY max_attempts DESC LIMIT 3`,
       )
       .all(userId, ...weakTaskIds) as { task_id: string; max_attempts: number }[];
 

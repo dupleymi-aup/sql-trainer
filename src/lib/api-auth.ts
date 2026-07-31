@@ -49,6 +49,18 @@ export async function requireTeacher(): Promise<{ error: NextResponse | null; se
 }
 
 /**
+ * UUID v4 format regex (loose — validates hex groups and dashes, not version bits).
+ */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Returns true if the string is a valid UUID format.
+ */
+export function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
+/**
  * Maximum valid timestamp (~year 3000) to reject impossibly large values.
  */
 const MAX_VALID_TIMESTAMP = 32503680000000; // 3000-01-01T00:00:00Z
@@ -279,4 +291,59 @@ export function positiveIntParam(searchParams: URLSearchParams, key: string, max
   if (val === null || val <= 0) return null;
   if (max !== undefined && val > max) return max;
   return val;
+}
+
+const DEFAULT_ANALYTICS_DAYS = 7;
+const MIN_ANALYTICS_DAYS = 1;
+const MAX_ANALYTICS_DAYS = 90;
+
+/**
+ * Parse a `days` query parameter with bounds [1, 90]. Defaults to 7.
+ */
+export function parseDaysParam(searchParams: URLSearchParams): number {
+  return Math.min(
+    Math.max(parseInt(searchParams.get('days') || String(DEFAULT_ANALYTICS_DAYS), 10), MIN_ANALYTICS_DAYS),
+    MAX_ANALYTICS_DAYS,
+  );
+}
+
+/**
+ * Verify group ownership. Returns { error, group } — if error is non-null, return it immediately.
+ */
+export async function requireGroupOwnership(
+  groupId: string | undefined,
+  teacherId: string,
+): Promise<{ error: NextResponse | null; group: { id: string; teacher_id: string; name: string } | null }> {
+  if (!groupId) {
+    return {
+      error: NextResponse.json({ success: false, error: 'Group ID is required' }, { status: 400 }),
+      group: null,
+    };
+  }
+
+  if (!isValidUUID(groupId)) {
+    return {
+      error: NextResponse.json({ success: false, error: 'Invalid group ID format' }, { status: 400 }),
+      group: null,
+    };
+  }
+
+  // Dynamic import to avoid circular dependency
+  const { getGroupById } = await import('@/lib/db-users');
+  const group = getGroupById(groupId);
+  if (!group) {
+    return {
+      error: NextResponse.json({ success: false, error: 'Group not found' }, { status: 404 }),
+      group: null,
+    };
+  }
+
+  if (group.teacher_id !== teacherId) {
+    return {
+      error: NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 }),
+      group: null,
+    };
+  }
+
+  return { error: null, group };
 }

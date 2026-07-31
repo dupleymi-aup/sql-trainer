@@ -41,6 +41,7 @@ let slowQueries = 0;
 let totalErrors = 0;
 let queryTimes: number[] = [];
 let lastSlowQuery: DbPoolMetrics['lastSlowQuery'] = undefined;
+let isAccessible = true;
 const slowThresholdMs = 1000; // Log queries slower than 1s
 const maxQueryTimes = 1000; // Rolling window size for P95 calculation
 const startTime = Date.now();
@@ -91,6 +92,14 @@ export function recordQuery(durationMs: number, sql?: string): void {
  */
 export function recordError(): void {
   totalErrors++;
+  isAccessible = false;
+}
+
+/**
+ * Mark the database as accessible again (e.g., after successful query).
+ */
+export function markAccessible(): void {
+  isAccessible = true;
 }
 
 /**
@@ -108,7 +117,7 @@ export function getMetrics(): DbPoolMetrics {
     p95QueryTimeMs: percentile(queryTimes, 95),
     lastSlowQuery,
     uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
-    isAccessible: true, // Set to false via recordError if needed
+    isAccessible,
   };
 }
 
@@ -121,6 +130,7 @@ export function resetMetrics(): void {
   totalErrors = 0;
   queryTimes = [];
   lastSlowQuery = undefined;
+  isAccessible = true;
 }
 
 // ─── Redis Monitoring ────────────────────────────────────────────────────────

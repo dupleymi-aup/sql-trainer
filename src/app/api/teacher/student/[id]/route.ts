@@ -1,12 +1,10 @@
-import { withTeacherAuth } from '@/lib/api-auth';
+import { withTeacherAuth, isValidUUID } from '@/lib/api-auth';
 import { NextResponse } from 'next/server';
 import { getStudentDetail, getUserAchievements, isStudentInTeacherGroup } from '@/lib/db-users';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export const GET = withTeacherAuth(async ({ session, params }) => {
   const id = params?.id as string | undefined;
-  if (!id || !UUID_REGEX.test(id)) {
+  if (!id || !isValidUUID(id)) {
     return NextResponse.json({ success: false, error: 'Invalid student ID format' }, { status: 400 });
   }
 

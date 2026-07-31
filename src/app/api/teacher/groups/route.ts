@@ -6,8 +6,16 @@ import { parseAndValidate } from '@/lib/validation';
 import { z } from 'zod';
 
 const createGroupSchema = z.object({
-  name: z.string().min(1, 'Group name is required').max(100, 'Group name must be less than 100 characters'),
-  description: z.string().max(500, 'Description must be less than 500 characters').optional(),
+  name: z
+    .string()
+    .min(1, 'Group name is required')
+    .max(100, 'Group name must be less than 100 characters')
+    .refine((s) => !/<[^>]*>/.test(s), 'HTML content is not allowed in name'),
+  description: z
+    .string()
+    .max(500, 'Description must be less than 500 characters')
+    .optional()
+    .refine((s) => !s || !/<[^>]*>/.test(s), 'HTML content is not allowed in description'),
   memberIds: z.array(z.string()).optional(),
 });
 

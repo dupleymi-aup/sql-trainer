@@ -31,9 +31,11 @@ export function usePolling(callback: () => void | Promise<void>, options: UsePol
       isFetchingRef.current = true;
       const result = callbackRef.current();
       if (result instanceof Promise) {
-        result.finally(() => {
-          isFetchingRef.current = false;
-        });
+        result
+          .catch((err) => logger.error('[usePolling] tick error:', err))
+          .finally(() => {
+            isFetchingRef.current = false;
+          });
       } else {
         isFetchingRef.current = false;
       }

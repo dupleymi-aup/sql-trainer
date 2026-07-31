@@ -17,6 +17,13 @@ export interface MongoSchema {
 }
 
 /**
+ * Reject keys that could cause prototype pollution.
+ */
+function isSafeKey(key: string): boolean {
+  return key !== '__proto__' && key !== 'constructor' && key !== 'prototype';
+}
+
+/**
  * Parse a MongoDB query string into a JSON object.
  * Supports find() and aggregate() syntax.
  */
@@ -157,6 +164,7 @@ function executeAggregate(
       results = results.map((doc) => applyProjection(doc, stage.$project as Record<string, number>));
     } else if (stage.$unwind) {
       const field = typeof stage.$unwind === 'string' ? stage.$unwind.slice(1) : String(stage.$unwind);
+      if (!isSafeKey(field)) continue;
       results = results.flatMap((doc) => {
         const arr = getNestedValue(doc, field) as unknown[];
         if (!Array.isArray(arr)) return [doc];
@@ -164,6 +172,7 @@ function executeAggregate(
       });
     } else if (stage.$lookup) {
       const lookup = stage.$lookup as Record<string, string>;
+      if (!isSafeKey(lookup.as)) continue;
       const foreignCollection = schema[lookup.from] || [];
       results = results.map((doc) => {
         const localVal = getNestedValue(doc, lookup.localField);
@@ -171,7 +180,8 @@ function executeAggregate(
         return { ...doc, [lookup.as]: matches };
       });
     } else if (stage.$count) {
-      results = [{ [stage.$count as string]: results.length }];
+      const countKey = isSafeKey(stage.$count as string) ? (stage.$count as string) : '_count';
+      results = [{ [countKey]: results.length }];
     }
   }
 
@@ -265,12 +275,14 @@ function aggregateGroup(
       result._id = getNestedValue(groupDocs[0], idField.slice(1));
     } else if (typeof idField === 'object') {
       for (const [k, v] of Object.entries(idField as Record<string, string>)) {
+        if (!isSafeKey(k)) continue;
         result[k] = getNestedValue(groupDocs[0], v.slice(1));
       }
     }
 
     for (const [field, expr] of Object.entries(groupSpec)) {
       if (field === '_id') continue;
+      if (!isSafeKey(field)) continue;
       const exprStr = typeof expr === 'object' ? JSON.stringify(expr) : '';
       if (exprStr.startsWith('{"$sum"')) {
         const fieldRef = (expr as Record<string, string>)['$sum'].slice(1);
@@ -375,71 +387,5 @@ export function executeMongoQuery(queryStr: string, schema: MongoSchema): MongoR
       rows: [],
       error: `MongoDB error: ${message}`,
     };
-  }
-}
-
-/**
- * Execute a MongoDB query with real MongoDB connection.
- */
-export async function executeMongoQueryReal(
-  queryStr: string,
-  connectionString: string,
-  databaseName: string,
-): Promise<MongoResult> {
-  const startTime = Date.now();
-
-  let client: import('mongodb').MongoClient | undefined;
-  try {
-    const { MongoClient } = await import('mongodb');
-    client = new MongoClient(connectionString, { serverSelectionTimeoutMS: 3000 });
-    await client.connect();
-
-    const parsed = parseMongoQuery(queryStr);
-    if (!parsed) {
-      return {
-        success: false,
-        columns: [],
-        rows: [],
-        error: 'Failed to parse MongoDB query',
-      };
-    }
-
-    const db = client.db(databaseName);
-    let rows: Record<string, unknown>[];
-
-    if (parsed.type === 'find') {
-      const options = (parsed.options as Record<string, unknown>) || {};
-      const { query = {}, projection = {}, sort = {}, limit, skip } = options;
-      const cursor = db.collection(parsed.collection).find(query as Record<string, unknown>, {
-        projection: projection as Record<string, number>,
-        skip: skip as number,
-        limit: limit as number,
-      });
-      if (sort) cursor.sort(sort as Record<string, 1 | -1>);
-      rows = await cursor.toArray();
-    } else {
-      const cursor = db.collection(parsed.collection).aggregate(parsed.options as Record<string, unknown>[]);
-      rows = await cursor.toArray();
-    }
-
-    const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const executionTime = Date.now() - startTime;
-
-    return {
-      success: true,
-      columns,
-      rows: rows.slice(0, 1000),
-      executionTime,
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown MongoDB error';
-    return {
-      success: false,
-      columns: [],
-      rows: [],
-      error: `MongoDB error: ${message}`,
-    };
-  } finally {
-    await client?.close();
   }
 }

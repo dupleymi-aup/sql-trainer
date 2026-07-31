@@ -77,7 +77,7 @@ export default function TimeToCompleteChart() {
   const maxTime = Math.max(...data.map((d) => d.estimated_time_minutes));
   const minTime = Math.min(...data.map((d) => d.estimated_time_minutes));
 
-  const chartData = data
+  const chartData = [...data]
     .sort((a, b) => b.estimated_time_minutes - a.estimated_time_minutes)
     .slice(0, 20)
     .map((d) => ({

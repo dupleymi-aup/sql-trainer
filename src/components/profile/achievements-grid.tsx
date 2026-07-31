@@ -89,7 +89,7 @@ export default function AchievementsGrid() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <h4 className={`text-sm font-medium truncate ${unlocked ? '' : 'text-muted-foreground'}`}>
-                      {a.title}
+                      {t(a.titleKey)}
                     </h4>
                     {unlocked && unlockedData?.unlockedAt && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 shrink-0">
@@ -100,7 +100,7 @@ export default function AchievementsGrid() {
                       </Badge>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{a.description}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{t(a.descriptionKey)}</p>
                   {!unlocked && (
                     <p className="mt-1 text-[10px] text-muted-foreground/60">
                       {t('achievements.locked', { default: '🔒 Locked' })}

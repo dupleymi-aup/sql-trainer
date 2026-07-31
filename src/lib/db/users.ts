@@ -87,22 +87,21 @@ function getLockoutDuration(failedAttempts: number): number {
 
 function recordFailedLogin(userId: string): void {
   const db = getDb();
+  // Atomic increment to avoid lost update from concurrent failed logins
+  db.prepare('UPDATE users SET failed_login_attempts = failed_login_attempts + 1, updated_at = ? WHERE id = ?').run(
+    Date.now(),
+    userId,
+  );
+
+  // Check if lockout threshold was reached or exceeded
   const user = db.prepare('SELECT failed_login_attempts FROM users WHERE id = ?').get(userId) as
-    | { failed_login_attempts: number }
-    | undefined;
+    { failed_login_attempts: number } | undefined;
   if (!user) return;
-  const attempts = (user.failed_login_attempts || 0) + 1;
-  if (attempts >= LOCKOUT_THRESHOLD) {
-    const duration = getLockoutDuration(attempts);
-    db.prepare('UPDATE users SET failed_login_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?').run(
-      attempts,
+
+  if (user.failed_login_attempts >= LOCKOUT_THRESHOLD) {
+    const duration = getLockoutDuration(user.failed_login_attempts);
+    db.prepare('UPDATE users SET locked_until = ?, updated_at = ? WHERE id = ?').run(
       Date.now() + duration,
-      Date.now(),
-      userId,
-    );
-  } else {
-    db.prepare('UPDATE users SET failed_login_attempts = ?, updated_at = ? WHERE id = ?').run(
-      attempts,
       Date.now(),
       userId,
     );
@@ -131,11 +130,11 @@ export function getLoginLockStatus(email: string): { remainingSeconds: number; m
     if (!user?.locked_until) return null;
     const remainingMs = user.locked_until - Date.now();
     if (remainingMs <= 0) {
-      // Lock expired — reset it
-      db.prepare('UPDATE users SET locked_until = NULL, updated_at = ? WHERE email = ?').run(
-        Date.now(),
-        normalizedEmail,
-      );
+      // Lock expired — reset it atomically: only update if still expired
+      db.prepare(
+        'UPDATE users SET locked_until = NULL, updated_at = ? WHERE email = ? AND locked_until IS NOT NULL AND locked_until <= ?',
+      ).run(Date.now(), normalizedEmail, Date.now());
+      // If another request already reset it (changes === 0), still return null
       return null;
     }
     const remainingSeconds = Math.ceil(remainingMs / 1000);
@@ -356,8 +355,7 @@ export async function verifyResetCode(code: string): Promise<{ userId: string; t
     if (result.changes === 0) return null;
 
     const record = db.prepare('SELECT user_id, type FROM reset_codes WHERE code = ?').get(code) as
-      | { user_id: string; type: string }
-      | undefined;
+      { user_id: string; type: string } | undefined;
 
     return record ? { userId: record.user_id, type: record.type } : null;
   } catch (error) {

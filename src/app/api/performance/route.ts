@@ -6,6 +6,11 @@ import { getDb } from '@/lib/db/connection';
 
 export const dynamic = 'force-dynamic';
 
+const MAX_FIELD_LENGTH = 2048;
+const MAX_ID_LENGTH = 128;
+
+const VALID_RATINGS = ['good', 'needs-improvement', 'poor'] as const;
+
 interface ExtendedPerformanceMetric {
   type: string;
   name: string;
@@ -42,6 +47,41 @@ interface ExtendedPerformanceMetric {
   userId?: string;
 }
 
+function truncate(str: unknown, max: number): string {
+  const s = String(str ?? '');
+  return s.length > max ? s.slice(0, max) : s;
+}
+
+function validateMetric(raw: unknown): ExtendedPerformanceMetric | string {
+  if (!raw || typeof raw !== 'object') return 'Invalid request body';
+  const m = raw as Record<string, unknown>;
+
+  if (!m.name || typeof m.name !== 'string') return 'Missing or invalid name';
+  if (typeof m.value !== 'number' || !Number.isFinite(m.value)) return 'Missing or invalid value';
+  if (typeof m.id !== 'string' || m.id.length === 0) return 'Missing or invalid id';
+  if (typeof m.type !== 'string') m.type = 'unknown';
+  if (typeof m.rating !== 'string' || !VALID_RATINGS.includes(m.rating as (typeof VALID_RATINGS)[number])) {
+    m.rating = 'good';
+  }
+  if (typeof m.delta !== 'number' || !Number.isFinite(m.delta)) m.delta = 0;
+  if (typeof m.navigationType !== 'string') m.navigationType = 'navigate';
+  if (typeof m.page !== 'string') m.page = '/';
+  if (typeof m.deviceType !== 'string') m.deviceType = 'unknown';
+  if (typeof m.userAgent !== 'string') m.userAgent = '';
+
+  // Truncate long fields
+  m.id = truncate(m.id, MAX_ID_LENGTH);
+  m.page = truncate(m.page, MAX_FIELD_LENGTH);
+  m.deviceType = truncate(m.deviceType, 64);
+  m.userAgent = truncate(m.userAgent, MAX_FIELD_LENGTH);
+  m.name = truncate(m.name, MAX_FIELD_LENGTH);
+  m.errorMessage = truncate(m.errorMessage, MAX_FIELD_LENGTH);
+  m.errorStack = truncate(m.errorStack, MAX_FIELD_LENGTH);
+  m.errorFile = truncate(m.errorFile, MAX_FIELD_LENGTH);
+
+  return m as unknown as ExtendedPerformanceMetric;
+}
+
 export async function POST(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
@@ -50,10 +90,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 });
     }
 
-    const metric: ExtendedPerformanceMetric = await request.json();
-
-    if (!metric.name || typeof metric.value !== 'number') {
-      return NextResponse.json({ success: false, error: 'Invalid metric' }, { status: 400 });
+    const raw = await request.json();
+    const metric = validateMetric(raw);
+    if (typeof metric === 'string') {
+      return NextResponse.json({ success: false, error: metric }, { status: 400 });
     }
 
     // Categorize and log the metric

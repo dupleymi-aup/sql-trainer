@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals';
 import type { Metric } from 'web-vitals';
-import { initPerformanceMonitor, mark, measure } from '@/lib/performance-monitor';
+import { initPerformanceMonitor, destroyPerformanceMonitor, mark, measure } from '@/lib/performance-monitor';
 import { logger } from '@/lib/logger';
 
 function getDeviceType(): string {
@@ -88,9 +88,15 @@ export default function WebVitals() {
 
     // Performance marks for page lifecycle
     mark('page-init');
-    window.addEventListener('load', () => {
+    const loadHandler = () => {
       measure('window-load', 'page-init');
-    });
+    };
+    window.addEventListener('load', loadHandler);
+
+    return () => {
+      window.removeEventListener('load', loadHandler);
+      destroyPerformanceMonitor();
+    };
   }, []);
 
   return null;

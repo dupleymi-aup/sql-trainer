@@ -108,6 +108,7 @@ export default function TaskPanel({
           className="w-full h-11 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white hover:from-emerald-700 hover:to-emerald-800 shadow-lg shadow-emerald-500/25 transition-all"
           onClick={onNextTask}
           disabled={allCompleted}
+          aria-label={nextTaskLabel || t('task.next')}
         >
           {allCompleted ? (
             <>
@@ -268,6 +269,9 @@ export default function TaskPanel({
                 size="sm"
                 className="w-full h-10 hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:border-amber-300 dark:hover:border-amber-700 transition-all"
                 onClick={onRevealNextHint}
+                aria-label={
+                  hintLevel === 0 ? t('task.showFirstHint') : t('task.showNextHint', { level: String(nextLevel) })
+                }
               >
                 <Lightbulb className="mr-2.5 h-4 w-4 text-amber-500" />
                 <span className="font-medium">
@@ -309,6 +313,7 @@ export default function TaskPanel({
             size="sm"
             className="h-8 text-xs hover:bg-muted/70 transition-all"
             onClick={onShowSolution}
+            aria-label={solutionVisible ? t('task.solutionHide') : t('task.solutionShow')}
           >
             {solutionVisible ? (
               <>
@@ -340,6 +345,7 @@ export default function TaskPanel({
                       () => {},
                     );
                   }}
+                  aria-label={t('task.solutionCopy', { default: 'Copy SQL' })}
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   <span className="font-medium">{t('task.solutionCopy', { default: 'Copy SQL' })}</span>
@@ -349,6 +355,7 @@ export default function TaskPanel({
                   size="sm"
                   className="flex-1 h-9 text-xs hover:bg-muted/70 transition-all"
                   onClick={() => onUseSolution(task.sampleSolution)}
+                  aria-label={t('task.solutionUse')}
                 >
                   <Copy className="mr-2 h-4 w-4" />
                   <span className="font-medium">{t('task.solutionUse')}</span>

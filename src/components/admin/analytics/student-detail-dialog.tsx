@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Award, Clock, Flame, Mail, Target, RotateCcw, TrendingUp, AlertCircle, Download } from 'lucide-react';
 import { t, getLocale } from '@/lib/i18n';
+import { getAchievementKeys } from '@/lib/store/gamification-slice';
 import { TRAINING_TASKS } from '@/lib/training-tasks';
 import { generateStudentReportPDF } from '@/lib/pdf-report';
 import LearningPathTimeline from './learning-path-timeline';
@@ -277,17 +278,22 @@ export default function StudentDetailDialog({ studentId, open, onOpenChange }: S
                 <p className="text-sm text-muted-foreground">{t('analytics.student.noAchievements')}</p>
               ) : (
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {data.achievements.map((achievement) => (
-                    <div key={achievement.id} className="flex items-start gap-2 p-2 rounded border">
-                      <Award className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{achievement.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(achievement.earned_at).toLocaleDateString(undefined)}
-                        </p>
+                  {data.achievements.map((achievement) => {
+                    const keys = getAchievementKeys(achievement.id);
+                    return (
+                      <div key={achievement.id} className="flex items-start gap-2 p-2 rounded border">
+                        <Award className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {keys?.titleKey ? t(keys.titleKey) : achievement.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(achievement.earned_at).toLocaleDateString(undefined)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

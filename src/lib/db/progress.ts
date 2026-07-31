@@ -8,7 +8,7 @@ export interface LeaderboardEntry {
   total_attempts: number;
 }
 
-export async function saveUserProgress(userId: string, taskId: string, attempts: number): Promise<void> {
+export function saveUserProgress(userId: string, taskId: string, attempts: number): void {
   try {
     const db = getDb();
     const saveProgress = db.transaction(() => {
@@ -52,9 +52,7 @@ export async function saveUserProgress(userId: string, taskId: string, attempts:
   }
 }
 
-export async function getUserProgress(
-  userId: string,
-): Promise<{ task_id: string; completed_at: number; attempts: number }[]> {
+export function getUserProgress(userId: string): { task_id: string; completed_at: number; attempts: number }[] {
   try {
     const db = getDb();
     return db
@@ -66,9 +64,9 @@ export async function getUserProgress(
   }
 }
 
-export async function getUserAchievements(
+export function getUserAchievements(
   userId: string,
-): Promise<{ id: string; title: string; description: string; icon: string; earned_at: number }[]> {
+): { id: string; title: string; description: string; icon: string; earned_at: number }[] {
   try {
     const db = getDb();
     return db
@@ -86,23 +84,21 @@ export async function getUserAchievements(
   }
 }
 
-export async function getAchievementDetails(achievementIds: string[]) {
+export function getAchievementDetails(achievementIds: string[]) {
   try {
+    if (achievementIds.length === 0) return [];
     const db = getDb();
-    const details: { id: string; title: string; description: string; icon: string }[] = [];
-    for (const id of achievementIds) {
-      const row = db.prepare('SELECT id, title, description, icon FROM achievements WHERE id = ?').get(id) as
-        { id: string; title: string; description: string; icon: string } | undefined;
-      if (row) details.push(row);
-    }
-    return details;
+    const placeholders = achievementIds.map(() => '?').join(',');
+    return db
+      .prepare(`SELECT id, title, description, icon FROM achievements WHERE id IN (${placeholders})`)
+      .all(...achievementIds) as { id: string; title: string; description: string; icon: string }[];
   } catch (error) {
     logger.error('getAchievementDetails failed:', error);
     return [];
   }
 }
 
-export async function checkAndAwardAchievements(userId: string): Promise<string[]> {
+export function checkAndAwardAchievements(userId: string): string[] {
   try {
     const db = getDb();
     const achievements = db.prepare('SELECT id, condition_type, condition_value FROM achievements').all() as {

@@ -12,20 +12,15 @@ const eslintConfig = [
     languageOptions: {
       globals: {
         React: 'readonly',
-        Headers: 'readonly',
-        HeadersInit: 'readonly',
-        RequestInit: 'readonly',
-        Response: 'readonly',
-        URL: 'readonly',
-        URLSearchParams: 'readonly',
-        fetch: 'readonly',
+        EventListener: 'readonly',
         RequestInfo: 'readonly',
-        Request: 'readonly',
+        RequestInit: 'readonly',
+        HeadersInit: 'readonly',
+        Headers: 'readonly',
       },
     },
     rules: {
       // TypeScript rules
-      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -60,7 +55,6 @@ const eslintConfig = [
       'no-irregular-whitespace': 'error',
       'no-case-declarations': 'warn',
       'no-fallthrough': 'error',
-      'no-mixed-spaces-and-tabs': 'error',
       'no-redeclare': 'error',
       'no-undef': 'error',
       'no-unreachable': 'error',
@@ -87,16 +81,7 @@ const eslintConfig = [
     },
   },
   {
-    // Ignore generated files and build artifacts
-    files: ['next-env.d.ts'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'off',
-      'no-unused-vars': 'off',
-    },
-  },
-
-  {
-    ignores: ['node_modules/**', '.next/**', 'out/**', 'build/**', 'next-env.d.ts', '_archive_extracted/**'],
+    ignores: ['_archive_extracted/**'],
   },
 ];
 

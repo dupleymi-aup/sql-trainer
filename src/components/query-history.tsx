@@ -55,6 +55,7 @@ export default function QueryHistory({ onRestoreQuery }: QueryHistoryProps) {
               e.stopPropagation();
               clearHistory();
             }}
+            aria-label={t('action.clearHistory', { default: 'Clear history' })}
           >
             <RotateCcw className="mr-1.5 h-3 w-3" />
             {t('action.clear')}

@@ -18,6 +18,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { t } from '@/lib/i18n';
+import { getAchievementKeys } from '@/lib/store/gamification-slice';
 import { useAnalyticsQuery } from '@/hooks/use-analytics-query';
 import EmptyState from './empty-state';
 
@@ -35,7 +36,7 @@ interface AcademicSummary {
   total_attempts: number;
   streak_current: number;
   streak_longest: number;
-  achievements: Array<{ title: string; earned_at: number }>;
+  achievements: Array<{ id: string; title: string; earned_at: number }>;
   skill_breakdown: Array<{
     category: string;
     label: string;
@@ -297,20 +298,23 @@ export default function StudentAcademicProfile({ studentId, open, onOpenChange }
                     <p className="text-sm text-muted-foreground">{t('analytics.student.noAchievements')}</p>
                   ) : (
                     <div className="grid gap-2 sm:grid-cols-2">
-                      {data.achievements.map((achievement) => (
-                        <div
-                          key={`${achievement.title}-${achievement.earned_at}`}
-                          className="flex items-start gap-2 p-3 rounded-lg border"
-                        >
-                          <Award className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium">{achievement.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(achievement.earned_at).toLocaleDateString(undefined)}
-                            </p>
+                      {data.achievements.map((achievement) => {
+                        const keys = getAchievementKeys(achievement.id);
+                        return (
+                          <div
+                            key={`${achievement.id}-${achievement.earned_at}`}
+                            className="flex items-start gap-2 p-3 rounded-lg border"
+                          >
+                            <Award className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium">{keys ? t(keys.titleKey) : achievement.title}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(achievement.earned_at).toLocaleDateString(undefined)}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>

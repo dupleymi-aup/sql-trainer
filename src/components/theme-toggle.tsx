@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTheme } from '@/lib/theme-provider';
 import { Moon, Sun, SunMoon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { t } from '@/lib/i18n';
+import { tWithLocale, type Locale } from '@/lib/i18n';
 
 type ThemeValue = 'light' | 'dark' | 'system';
 
@@ -13,9 +13,10 @@ const themeCycle: ThemeValue[] = ['light', 'dark', 'system'];
 interface ThemeToggleProps {
   size?: 'sm' | 'default';
   className?: string;
+  locale?: Locale;
 }
 
-export function ThemeToggle({ size = 'default', className }: ThemeToggleProps) {
+export function ThemeToggle({ size = 'default', className, locale = 'ru' }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -40,7 +41,7 @@ export function ThemeToggle({ size = 'default', className }: ThemeToggleProps) {
         variant="ghost"
         size="icon"
         className={`${btnClass} ${className || ''}`}
-        aria-label={t('common.toggleTheme')}
+        aria-label={tWithLocale(locale, 'common.toggleTheme')}
       >
         <Sun className={iconClass} />
       </Button>
@@ -56,7 +57,7 @@ export function ThemeToggle({ size = 'default', className }: ThemeToggleProps) {
       size="icon"
       className={`${btnClass} ${className || ''}`}
       onClick={handleToggle}
-      aria-label={t('common.switchToTheme', { theme: nextTheme })}
+      aria-label={tWithLocale(locale, 'common.switchToTheme', { theme: nextTheme })}
     >
       <Icon className={iconClass} />
     </Button>

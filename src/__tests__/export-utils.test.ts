@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { exportToCSV, exportToJSON, formatDate, formatPercent, formatNumber } from '@/lib/export-utils';
+import { exportToCSV, exportToJSON } from '@/lib/export-utils';
 
 const columns = [
   { key: 'name', label: 'Name' },
@@ -75,46 +75,5 @@ describe('exportToJSON', () => {
     setupDomMocks();
     exportToJSON([], 'empty');
     expect(URL.createObjectURL).not.toHaveBeenCalled();
-  });
-});
-
-describe('formatDate', () => {
-  it('should return a string for timestamp', () => {
-    const result = formatDate(new Date('2024-01-15').getTime());
-    expect(typeof result).toBe('string');
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  it('should handle epoch timestamp', () => {
-    const result = formatDate(0);
-    expect(typeof result).toBe('string');
-  });
-});
-
-describe('formatPercent', () => {
-  it('should format value with percent sign', () => {
-    expect(formatPercent(75)).toBe('75%');
-  });
-
-  it('should handle zero', () => {
-    expect(formatPercent(0)).toBe('0%');
-  });
-
-  it('should handle negative values', () => {
-    expect(formatPercent(-10)).toBe('-10%');
-  });
-});
-
-describe('formatNumber', () => {
-  it('should convert number to string', () => {
-    expect(formatNumber(42)).toBe('42');
-  });
-
-  it('should handle zero', () => {
-    expect(formatNumber(0)).toBe('0');
-  });
-
-  it('should handle negative numbers', () => {
-    expect(formatNumber(-42)).toBe('-42');
   });
 });
