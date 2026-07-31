@@ -267,7 +267,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'BEGIN; INSERT INTO products ...; INSERT INTO orders ...; COMMIT;',
     sampleSolution:
       "BEGIN; INSERT INTO products (name, price, stock) VALUES ('Printer', 15000, 20); INSERT INTO orders (product_id, quantity, order_date, customer_name) VALUES (6, 2, '2024-02-01', 'Petrov'); COMMIT;",
-    verificationQuery: 'SELECT COUNT(*) as count FROM products WHERE name = "Printer";',
+    verificationQuery: "SELECT COUNT(*) as count FROM products WHERE name = 'Printer';",
   },
 
   {
@@ -282,7 +282,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'BEGIN; INSERT INTO products ...; ROLLBACK; SELECT * FROM products;',
     sampleSolution:
       "BEGIN; INSERT INTO products (name, price, stock) VALUES ('Scanner', 12000, 15); ROLLBACK; SELECT * FROM products;",
-    verificationQuery: 'SELECT COUNT(*) as count FROM products WHERE name = "Scanner";',
+    verificationQuery: "SELECT COUNT(*) as count FROM products WHERE name = 'Scanner';",
   },
 
   {
@@ -309,8 +309,8 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     dbType: 'sqlite',
     schema: EMPLOYEES_SCHEMA,
     taskText: 'Display first_name, hire_date and hire year of each employee. Use strftime.',
-    hint: 'strftime("%Y", hire_date) extracts the year from a date.',
-    sampleSolution: 'SELECT first_name, hire_date, strftime("%Y", hire_date) as hire_year FROM employees;',
+    hint: "strftime('%Y', hire_date) extracts the year from a date.",
+    sampleSolution: "SELECT first_name, hire_date, strftime('%Y', hire_date) as hire_year FROM employees;",
     verificationQuery: 'SELECT COUNT(*) as count FROM employees;',
   },
 
@@ -323,9 +323,9 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     schema: EMPLOYEES_SCHEMA,
     taskText:
       "Calculate the number of days from each employee's hire date to 2024-01-01. Display first_name and days_worked.",
-    hint: 'julianday("2024-01-01") - julianday(hire_date) gives the difference in days.',
+    hint: "julianday('2024-01-01') - julianday(hire_date) gives the difference in days.",
     sampleSolution:
-      'SELECT first_name, CAST(julianday("2024-01-01") - julianday(hire_date) AS INTEGER) as days_worked FROM employees ORDER BY days_worked DESC;',
+      "SELECT first_name, CAST(julianday('2024-01-01') - julianday(hire_date) AS INTEGER) as days_worked FROM employees ORDER BY days_worked DESC;",
     verificationQuery: 'SELECT COUNT(*) as count FROM employees;',
   },
 
@@ -337,9 +337,9 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     dbType: 'sqlite',
     schema: EMPLOYEES_SCHEMA,
     taskText: 'Find employees hired in 2021. Display first_name, last_name and hire_date.',
-    hint: 'strftime("%Y", hire_date) = "2021" or hire_date BETWEEN "2021-01-01" AND "2021-12-31".',
-    sampleSolution: 'SELECT first_name, last_name, hire_date FROM employees WHERE strftime("%Y", hire_date) = "2021";',
-    verificationQuery: 'SELECT COUNT(*) as count FROM employees WHERE strftime("%Y", hire_date) = "2021";',
+    hint: "strftime('%Y', hire_date) = '2021' or hire_date BETWEEN '2021-01-01' AND '2021-12-31'.",
+    sampleSolution: "SELECT first_name, last_name, hire_date FROM employees WHERE strftime('%Y', hire_date) = '2021';",
+    verificationQuery: "SELECT COUNT(*) as count FROM employees WHERE strftime('%Y', hire_date) = '2021';",
   },
 
   {
@@ -714,7 +714,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     sampleSolution:
       "SELECT d.name, STRING_AGG(e.first_name, ', ' ORDER BY e.first_name) AS employee_names FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name ORDER BY d.name;",
     verificationQuery:
-      'SELECT d.name, GROUP_CONCAT(e.first_name, ", ") AS employee_names FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name;',
+      "SELECT d.name, GROUP_CONCAT(e.first_name, ', ') AS employee_names FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name;",
   },
 
   {
@@ -763,7 +763,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     sampleSolution:
       'SELECT d.name, ARRAY_AGG(e.email) AS employee_emails FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name ORDER BY d.name;',
     verificationQuery:
-      'SELECT d.name, GROUP_CONCAT(e.email, "|") AS employee_emails FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name;',
+      "SELECT d.name, GROUP_CONCAT(e.email, '|') AS employee_emails FROM departments d JOIN employees e ON d.id = e.department_id GROUP BY d.name;",
   },
 
   {

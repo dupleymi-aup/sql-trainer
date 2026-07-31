@@ -192,10 +192,10 @@ describe('mysql-adapter', () => {
       expect(result).toContain('* 86400');
     });
 
-    it('should convert REGEXP to LIKE', () => {
+    it('should convert REGEXP to use SQLite REGEXP operator', () => {
       const result = adaptMySQLToSQLite("SELECT * FROM t WHERE name REGEXP '^A'");
-      expect(result).toContain('LIKE');
-      expect(result).not.toContain('REGEXP');
+      // SQLite now supports REGEXP via custom function registered in sql-engine
+      expect(result).toContain("REGEXP '^A'");
     });
 
     it('should convert STR_TO_DATE', () => {

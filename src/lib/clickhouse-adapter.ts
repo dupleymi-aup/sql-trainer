@@ -342,7 +342,7 @@ function replaceClickHouseFunctions(sql: string): string {
   );
 
   // formatDateTime
-  result = result.replace(/\bformatDateTime\s*\(\s*([^,]+),\s*['"]([^'"]+)['"]/gi, (_match, expr, fmt) => {
+  result = result.replace(/\bformatDateTime\s*\(\s*([^,]+),\s*['"]([^'"]+)['"]\s*\)/gi, (_match, expr, fmt) => {
     const chToSqliteFmt = fmt
       .replace(/%T/g, '%H:%M:%S')
       .replace(/%F/g, '%Y-%m-%d')

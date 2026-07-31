@@ -113,10 +113,10 @@ export const MYSQL_TASKS: TrainingTask[] = [
     category: 'company',
     schema: EMPLOYEES_SCHEMA,
     taskText:
-      'Calculate each employee\'s tenure in days as of "2024-01-01". Display first_name and days_worked = DATEDIFF("2024-01-01", hire_date).',
+      "Calculate each employee's tenure in days as of '2024-01-01'. Display first_name and days_worked = DATEDIFF('2024-01-01', hire_date).",
     hint: 'DATEDIFF(date1, date2) returns the difference in days between two dates.',
     sampleSolution:
-      'SELECT first_name, DATEDIFF("2024-01-01", hire_date) as days_worked FROM employees ORDER BY days_worked DESC;',
+      "SELECT first_name, DATEDIFF('2024-01-01', hire_date) as days_worked FROM employees ORDER BY days_worked DESC;",
     verificationQuery: 'SELECT COUNT(*) as count FROM employees;',
   },
 
@@ -285,9 +285,9 @@ export const MYSQL_TASKS: TrainingTask[] = [
     dbType: 'mysql',
     category: 'shop',
     schema: SHOP_SCHEMA,
-    taskText: 'Update all orders without a status (NULL): set status = "Not specified". Use WHERE status IS NULL.',
+    taskText: "Update all orders without a status (NULL): set status = 'Not specified'. Use WHERE status IS NULL.",
     hint: 'WHERE status IS NULL finds rows with NULL value.',
     sampleSolution: "UPDATE orders SET status = 'Not specified' WHERE status IS NULL;",
-    verificationQuery: 'SELECT COUNT(*) as count FROM orders WHERE status = "Not specified";',
+    verificationQuery: "SELECT COUNT(*) as count FROM orders WHERE status = 'Not specified';",
   },
 ];

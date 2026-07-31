@@ -111,6 +111,20 @@ function adaptFunction(sql: string): string {
   result = result.replace(/\bDATE_FORMAT\s*\(\s*([^,]+)\s*,\s*'%m'\s*\)/gi, "strftime('%m', $1)");
   result = result.replace(/\bDATE_FORMAT\s*\(\s*([^,]+)\s*,\s*'%d'\s*\)/gi, "strftime('%d', $1)");
 
+  // DATE_FORMAT(date, format) -> strftime adapted (general fallback)
+  result = result.replace(/\bDATE_FORMAT\s*\(\s*([^,]+)\s*,\s*'([^']+)'\s*\)/gi, (_m, expr, fmt) => {
+    const adapted = fmt
+      .replace(/%i/g, '%M')
+      .replace(/%s/g, '%S')
+      .replace(/%e/g, '%d')
+      .replace(/%k/g, '%H')
+      .replace(/%T/g, '%H:%M:%S')
+      .replace(/%F/g, '%Y-%m-%d')
+      .replace(/%R/g, '%H:%M')
+      .replace(/%p/g, '');
+    return `strftime('${adapted}', ${expr.trim()})`;
+  });
+
   // STR_TO_DATE(str, format) -> date(str) or datetime(str)
   result = result.replace(/\bSTR_TO_DATE\s*\(\s*([^,]+)\s*,\s*'%Y-%m-%d'\s*\)/gi, 'date($1)');
   result = result.replace(/\bSTR_TO_DATE\s*\(\s*([^,]+)\s*,\s*'%Y-%m-%d %H:%i:%s'\s*\)/gi, 'datetime($1)');
@@ -171,6 +185,31 @@ function adaptFunction(sql: string): string {
 
   // CONCAT_WS(separator, ...) is supported by SQLite as is
 
+  // GROUP_CONCAT(expr SEPARATOR sep) -> GROUP_CONCAT(expr, sep)
+  result = result.replace(/\bGROUP_CONCAT\s*\(([^)]*?)\s+SEPARATOR\s+('(?:[^']|'')*')\)/gi, 'GROUP_CONCAT($1, $2)');
+
+  // GROUP_CONCAT(expr ORDER BY sort_list SEPARATOR sep) -> GROUP_CONCAT(expr, sep)
+  result = result.replace(
+    /\bGROUP_CONCAT\s*\(([^)]*?)\s+ORDER\s+BY\s+[^)]*?\s+SEPARATOR\s+('(?:[^']|'')*')\)/gi,
+    'GROUP_CONCAT($1, $2)',
+  );
+
+  // JSON_ARRAYAGG(expr) -> '[' || GROUP_CONCAT(expr) || ']'
+  result = result.replace(/\bJSON_ARRAYAGG\s*\(\s*([^)]+)\)/gi, "'[' || GROUP_CONCAT($1) || ']'");
+
+  // col->>'$.key' and col->'$.key' -> JSON_EXTRACT(col, '$.key')
+  result = result.replace(/\b([A-Za-z_]\w*)\s*->>\s*'([^']+)'/g, "JSON_EXTRACT($1, '$2')");
+  result = result.replace(/\b([A-Za-z_]\w*)\s*->\s*'([^']+)'/g, "JSON_EXTRACT($1, '$2')");
+
+  // REGEXP_LIKE(expr, pattern) -> expr REGEXP pattern
+  result = result.replace(/\bREGEXP_LIKE\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/gi, '($1 REGEXP $2)');
+
+  // GROUP BY col WITH ROLLUP -> GROUP BY col (rollup totals not supported)
+  result = result.replace(/\s+WITH\s+ROLLUP\b/gi, '');
+
+  // RLIKE -> REGEXP
+  result = result.replace(/\bRLIKE\b/gi, 'REGEXP');
+
   // FIELD(value, val1, val2, ...) -> CASE WHEN
   result = result.replace(
     /\bFIELD\s*\(\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/gi,
@@ -183,9 +222,8 @@ function adaptFunction(sql: string): string {
     "(CASE WHEN ',' || $2 || ',' LIKE '%,' || $1 || ',%' THEN 1 ELSE 0 END)",
   );
 
-  // REGEXP/RLIKE -> SQLite doesn't support regex natively, use LIKE approximation
-  result = result.replace(/\b([^,\s]+)\s+REGEXP\s+([^,\s]+)/gi, '$1 LIKE $2');
-  result = result.replace(/\bRLIKE\s+([^,\s]+)/gi, 'LIKE $1');
+  // REGEXP/RLIKE -> SQLite regexp function (registered in sql-engine)
+  result = result.replace(/\bRLIKE\b/gi, 'REGEXP');
 
   return result;
 }

@@ -66,12 +66,8 @@ const FUNCTION_MAP: Record<string, string | null> = {
   BOOL_OR: 'MAX', // 0/1 mapping
   DATE_TRUNC: null, // complex, skip
   EXTRACT: null, // complex, skip
-  CURRENT_DATE: "date('now')",
-  CURRENT_TIME: "time('now')",
-  CURRENT_TIMESTAMP: "datetime('now')",
-  LOCALTIMESTAMP: "datetime('now')",
-  LOCALTIME: "time('now')",
-  NOW: "datetime('now')",
+  // CURRENT_DATE, CURRENT_TIME, etc. are handled by regex replacements
+  // (see adaptPostgreSQLToSQLite) to avoid matching identifiers like "current_time"
   PG_SLEEP: null, // not supported
   // String functions
   SUBSTRING: 'SUBSTR',
@@ -151,6 +147,27 @@ function applyFunctionReplacements(sql: string): string {
     .join('');
 
   return processed;
+}
+
+/**
+ * Split a comma-separated list into parts, respecting balanced parentheses.
+ */
+function splitCsv(str: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const ch of str) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  parts.push(current);
+  return parts;
 }
 
 /**
@@ -240,6 +257,50 @@ export function adaptPostgreSQLToSQLite(sql: string): string {
   // Replace DISTINCT ON - not supported in SQLite
   result = result.replace(/\bDISTINCT\s+ON\s*\([^)]+\)/gi, 'DISTINCT');
 
+  // Replace EXTRACT(part FROM expr) → CAST(STRFTIME('%part', expr) AS INTEGER)
+  // Runs before :: cast replacement so nested casts like hire_date::date are preserved.
+  const extractParts: Record<string, string> = {
+    YEAR: '%Y',
+    MONTH: '%m',
+    DAY: '%d',
+    HOUR: '%H',
+    MINUTE: '%M',
+    SECOND: '%S',
+    DOW: '%w',
+    DOY: '%j',
+    WEEK: '%W',
+  };
+  result = result.replace(/\bEXTRACT\s*\(\s*(\w+)\s+FROM\s+([^)]+)\)/gi, (_m, part: string, expr: string) => {
+    const fmt = extractParts[part.toUpperCase()];
+    const e = expr.trim();
+    if (!fmt) return `CAST(${e} AS INTEGER)`;
+    return `CAST(STRFTIME('${fmt}', ${e}) AS INTEGER)`;
+  });
+
+  // Replace DATE_TRUNC('unit', expr) → SQLite date expression
+  // Runs before :: cast replacement so nested casts like hire_date::date are preserved.
+  result = result.replace(/\bDATE_TRUNC\s*\(\s*'(\w+)'\s*,\s*([^)]+)\)/gi, (_m, unit: string, expr: string) => {
+    const e = expr.trim();
+    switch (unit.toLowerCase()) {
+      case 'year':
+        return `STRFTIME('%Y-01-01', ${e})`;
+      case 'quarter':
+        return `DATE(${e}, 'start of year', printf('+%d months', ((CAST(STRFTIME('%m', ${e}) AS INTEGER) - 1) / 3) * 3))`;
+      case 'month':
+        return `STRFTIME('%Y-%m-01', ${e})`;
+      case 'week':
+        return `DATE(${e}, 'weekday 1', '-7 days')`;
+      case 'day':
+        return `DATE(${e})`;
+      case 'hour':
+        return `STRFTIME('%Y-%m-%d %H:00:00', ${e})`;
+      case 'minute':
+        return `STRFTIME('%Y-%m-%d %H:%M:00', ${e})`;
+      default:
+        return `DATE(${e})`;
+    }
+  });
+
   // Replace ::type casting with CAST(expr AS type)
   // Match identifiers and string literals before ::
   result = result.replace(
@@ -250,6 +311,47 @@ export function adaptPostgreSQLToSQLite(sql: string): string {
       return `CAST(${expr} AS ${mapped})`;
     },
   );
+
+  // Replace CURRENT_DATE +/- INTERVAL 'n units' → DATE('now', modifier)
+  // Runs before bare CURRENT_DATE replacement.
+  result = result.replace(/\bCURRENT_DATE\s*([-+])\s*INTERVAL\s*'([^']+)'/gi, (_m, op: string, span: string) => {
+    const sign = op === '-' ? '-' : '';
+    return `DATE('now', '${sign}${span}')`;
+  });
+
+  // Replace CONCAT_WS(sep, a, b, ...) → (a || sep || b || ...)
+  // Must run before applyFunctionReplacements (which maps CONCAT_WS → GROUP_CONCAT).
+  result = result.replace(/\bCONCAT_WS\s*\(\s*([^()]+)\s*,\s*((?:[^()]|\([^()]*\))*)\s*\)/gi, (_m, sep, rest) => {
+    const parts = splitCsv(rest);
+    return '(' + parts.map((p) => p.trim()).join(` || ${sep.trim()} || `) + ')';
+  });
+
+  // Replace GENERATE_SERIES(a, b) AS gs(col) → recursive CTE derived table
+  result = result.replace(
+    /\bGENERATE_SERIES\s*\(\s*(-?\d+)\s*,\s*(-?\d+)\s*\)\s*AS\s+(\w+)\s*\(\s*(\w+)\s*\)/gi,
+    (_m, start: string, end: string, alias: string, col: string) =>
+      `(WITH RECURSIVE ${alias}(${col}) AS (VALUES (${start}) UNION ALL SELECT ${col} + 1 FROM ${alias} WHERE ${col} < ${end}) SELECT ${col} FROM ${alias}) AS ${alias}`,
+  );
+
+  // Replace x = ANY(ARRAY[a, b, c]) → x IN (a, b, c)
+  result = result.replace(
+    /\b([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*=\s*ANY\s*\(\s*ARRAY\s*\[([^\]]+)\]\s*\)/gi,
+    '$1 IN ($2)',
+  );
+
+  // Replace string_to_array(expr, sep) → expr (simplified for SQLite)
+  result = result.replace(/\bstring_to_array\s*\(\s*([^,]+)\s*,\s*([^)]+)\s*\)/gi, '$1');
+
+  // Replace x @> ARRAY[v] (array containment) → INSTR(x, v) > 0
+  result = result.replace(/\b([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*@>\s*ARRAY\s*\[([^\]]+)\]/gi, '(INSTR($1, $2) > 0)');
+
+  // Replace CURRENT_DATE / CURRENT_TIME / etc. without parentheses
+  // Case-sensitive to avoid matching identifiers like "current_time" (alias)
+  result = result.replace(/(?<![.\w])CURRENT_DATE\b(?!\s*\()/g, "date('now')");
+  result = result.replace(/(?<![.\w])CURRENT_TIME\b(?!\s*\()/g, "time('now')");
+  result = result.replace(/(?<![.\w])CURRENT_TIMESTAMP\b(?!\s*\()/g, "datetime('now')");
+  result = result.replace(/(?<![.\w])LOCALTIMESTAMP\b(?!\s*\()/g, "datetime('now')");
+  result = result.replace(/(?<![.\w])LOCALTIME\b(?!\s*\()/g, "time('now')");
 
   // Replace function names from FUNCTION_MAP
   result = applyFunctionReplacements(result);
@@ -308,12 +410,12 @@ function replaceDataTypes(sql: string): string {
   result = result.replace(/\bFLOAT4\b/gi, 'REAL');
   result = result.replace(/\bFLOAT8\b/gi, 'REAL');
   result = result.replace(/\bDOUBLE\s+PRECISION\b/gi, 'REAL');
-  result = result.replace(/\bTIMESTAMP\s*(\([^)]*\))?\s*(WITH\s+TIME\s+ZONE)?\s*(WITHOUT\s+TIME\s+ZONE)?/gi, 'TEXT');
+  result = result.replace(/\bTIMESTAMP\b(?![_a-zA-Z(])/gi, 'TEXT');
   result = result.replace(/\bTIMESTAMPTZ\b/gi, 'TEXT');
-  result = result.replace(/\bTIME\s*(\([^)]*\))?\s*(WITH\s+TIME\s+ZONE)?\s*(WITHOUT\s+TIME\s+ZONE)?/gi, 'TEXT');
-  result = result.replace(/\bDATE\b/gi, 'TEXT');
+  result = result.replace(/\bTIME\b(?![_a-zA-Z(])/gi, 'TEXT');
+  result = result.replace(/\bDATE\b(?![_a-zA-Z(])/gi, 'TEXT');
   result = result.replace(/\bJSONB\b/gi, 'TEXT');
-  result = result.replace(/\bJSON\b/gi, 'TEXT');
+  result = result.replace(/\bJSON\b(?![_a-zA-Z(])/gi, 'TEXT');
   result = result.replace(/\bUUID\b/gi, 'TEXT');
   result = result.replace(/\bBYTEA\b/gi, 'BLOB');
   result = result.replace(/\bBOOLEAN\b/gi, 'INTEGER');
@@ -327,7 +429,7 @@ function replaceDataTypes(sql: string): string {
   result = result.replace(/\bCIDR\b/gi, 'TEXT');
   result = result.replace(/\bINET\b/gi, 'TEXT');
   result = result.replace(/\bMACADDR\b/gi, 'TEXT');
-  result = result.replace(/\bINTERVAL\b/gi, 'TEXT');
+  result = result.replace(/\bINTERVAL\b(?!\s*['"])(?![_a-zA-Z(])/gi, 'TEXT');
   result = result.replace(/\bMONEY\b/gi, 'REAL');
 
   return result;

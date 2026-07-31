@@ -384,6 +384,20 @@ function schemaCacheKey(schemaSql: string, dbType: string): string {
 }
 
 /**
+ * Register custom SQL functions on a SQLite database instance.
+ * REGEXP(pattern, value) provides a JS-regex implementation for the REGEXP operator.
+ */
+function registerCustomFunctions(db: Database.Database): void {
+  db.function('regexp', (pattern: string, value: string) => {
+    try {
+      return new RegExp(pattern).test(String(value)) ? 1 : 0;
+    } catch {
+      return 0;
+    }
+  });
+}
+
+/**
  * Clone a cached database to a new in-memory instance with the same schema and data.
  * Uses SQL dump/restore approach for isolation.
  * Safe for tables with special characters and empty tables.
@@ -391,6 +405,7 @@ function schemaCacheKey(schemaSql: string, dbType: string): string {
 function cloneDatabase(source: Database.Database): Database.Database {
   const newDb = new Database(':memory:');
   newDb.pragma('foreign_keys = ON');
+  registerCustomFunctions(newDb);
 
   // Dump schema (tables and indexes)
   const schema = source
@@ -626,6 +641,7 @@ export function executeQuery(
 
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
+  registerCustomFunctions(db);
 
   try {
     const { processedSql, warnings } = adaptSqlForExecution(sql, dbType);
@@ -682,6 +698,7 @@ export function executeWithSchema(
     } else {
       db = new Database(':memory:');
       db.pragma('foreign_keys = ON');
+      registerCustomFunctions(db);
 
       const processedSchema = adaptSchemaForDbType(schemaSql, dbType);
 
@@ -761,6 +778,7 @@ export function executeWithSchemaMulti(
     } else {
       db = new Database(':memory:');
       db.pragma('foreign_keys = ON');
+      registerCustomFunctions(db);
 
       const processedSchema = adaptSchemaForDbType(schemaSql, dbType);
 
@@ -826,6 +844,7 @@ export function getSchemaInfo(
 ): DatabaseInfo {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
+  registerCustomFunctions(db);
 
   try {
     const processedSchema = adaptSchemaForDbType(schemaSql, dbType);
@@ -876,6 +895,7 @@ export function explainQuery(
 ): { success: boolean; plan?: string; error?: string } {
   const db = new Database(':memory:');
   db.pragma('foreign_keys = ON');
+  registerCustomFunctions(db);
 
   try {
     const processedSchema = adaptSchemaForDbType(schemaSql, dbType as 'sqlite' | 'postgresql' | 'clickhouse' | 'mysql');

@@ -352,20 +352,6 @@ INSERT INTO events (id, user_id, event_type, page, element, event_time, device, 
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (26, 1, 'click', '/products', 'card_sql', '2024-01-25 09:05:00', 'desktop', 'Russia', 0);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (27, 2, 'click', '/home', 'btn_login', '2024-01-25 10:00:00', 'mobile', 'Belarus', 0);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (28, 5, 'click', '/products', 'card_python', '2024-01-25 11:00:00', 'mobile', 'Russia', 0);
-`;
-
-export const ANALYTICS_SCHEMA = `
-CREATE TABLE events (
-  id UInt64,
-  user_id UInt64,
-  event_type String,
-  page String,
-  element Nullable(String),
-  event_time DateTime,
-  device String,
-  country String,
-  duration UInt64
-) ENGINE = Memory;
 
 CREATE TABLE users (
   id UInt64,
@@ -387,36 +373,6 @@ CREATE TABLE purchases (
   status String,
   payment_method String
 );
-
--- Events
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (1, 1, 'page_view', '/home', NULL, '2024-01-15 10:30:00', 'desktop', 'Russia', 45);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (2, 2, 'page_view', '/products', NULL, '2024-01-15 11:00:00', 'mobile', 'Russia', 120);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (3, 1, 'click', '/home', 'btn_login', '2024-01-15 10:35:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (4, 3, 'page_view', '/courses', NULL, '2024-01-16 09:00:00', 'tablet', 'Russia', 90);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (5, 4, 'page_view', '/home', NULL, '2024-01-16 10:00:00', 'desktop', 'Russia', 30);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (6, 5, 'click', '/products', 'card_sql', '2024-01-16 11:30:00', 'mobile', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (7, 2, 'purchase', '/checkout', NULL, '2024-01-17 14:00:00', 'mobile', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (8, 6, 'page_view', '/home', NULL, '2024-01-17 15:00:00', 'desktop', 'Russia', 55);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (9, 1, 'page_view', '/courses', NULL, '2024-01-18 08:00:00', 'desktop', 'Russia', 200);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (10, 7, 'click', '/home', 'btn_signup', '2024-01-18 09:15:00', 'mobile', 'Kazakhstan', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (11, 3, 'click', '/courses', 'btn_enroll', '2024-01-19 10:00:00', 'tablet', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (12, 8, 'page_view', '/products', NULL, '2024-01-19 11:00:00', 'desktop', 'Russia', 75);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (13, 5, 'page_view', '/home', NULL, '2024-01-20 08:30:00', 'mobile', 'Russia', 40);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (14, 9, 'click', '/products', 'card_python', '2024-01-20 09:00:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (15, 4, 'purchase', '/checkout', NULL, '2024-01-21 12:00:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (16, 10, 'page_view', '/courses', NULL, '2024-01-21 14:00:00', 'mobile', 'Russia', 60);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (17, 11, 'page_view', '/home', NULL, '2024-01-22 08:00:00', 'desktop', 'Russia', 25);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (18, 2, 'page_view', '/home', NULL, '2024-01-22 10:00:00', 'mobile', 'Belarus', 35);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (19, 12, 'click', '/products', 'card_js', '2024-01-22 11:00:00', 'mobile', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (20, 1, 'purchase', '/checkout', NULL, '2024-01-23 09:00:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (21, 13, 'page_view', '/home', NULL, '2024-01-23 10:00:00', 'desktop', 'Russia', 50);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (22, 6, 'click', '/courses', 'btn_enroll', '2024-01-24 08:00:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (23, 14, 'page_view', '/products', NULL, '2024-01-24 09:00:00', 'mobile', 'Russia', 85);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (24, 3, 'page_view', '/home', NULL, '2024-01-24 10:00:00', 'tablet', 'Russia', 15);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (25, 1, 'click', '/courses', 'btn_enroll', '2024-01-25 09:00:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (26, 1, 'click', '/products', 'card_sql', '2024-01-25 09:05:00', 'desktop', 'Russia', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (27, 2, 'click', '/home', 'btn_login', '2024-01-25 10:00:00', 'mobile', 'Belarus', 0);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (28, 5, 'click', '/products', 'card_python', '2024-01-25 11:00:00', 'mobile', 'Russia', 0);
 
 -- Users
 INSERT INTO users (id, username, email, age, city, registration_date, is_premium) VALUES (1, 'alex', 'alex@example.com', 22, 'Moscow', '2023-01-10', 1);
@@ -445,6 +401,99 @@ INSERT INTO purchases (id, user_id, product_id, product_name, amount, purchase_d
 INSERT INTO purchases (id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (12, 9, 11, 'Tablet', 25990, '2024-03-25', 'completed', 'card');
 INSERT INTO purchases (id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (13, 3, 4, 'Speaker', 3490, '2024-04-01', 'completed', 'card');
 INSERT INTO purchases (id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (14, 10, 1, 'Wireless Headphones', 8990, '2024-04-05', 'completed', 'card');
+`;
+
+export const ANALYTICS_SCHEMA = `
+CREATE TABLE events (
+  event_id UInt64,
+  user_id UInt64,
+  event_type String,
+  page String,
+  element Nullable(String),
+  event_time DateTime,
+  device String,
+  country String,
+  duration UInt64
+) ENGINE = Memory;
+
+CREATE TABLE users (
+  user_id UInt64,
+  username String,
+  email String,
+  age UInt8,
+  city String,
+  registration_date Date,
+  is_premium UInt8
+);
+
+CREATE TABLE purchases (
+  purchase_id UInt64,
+  user_id UInt64,
+  product_id UInt64,
+  product_name String,
+  amount UInt64,
+  purchase_date Date,
+  status String,
+  payment_method String
+);
+
+-- Events
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (1, 1, 'page_view', '/home', NULL, '2024-01-15 10:30:00', 'desktop', 'Russia', 45);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (2, 2, 'page_view', '/products', NULL, '2024-01-15 11:00:00', 'mobile', 'Russia', 120);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (3, 1, 'click', '/home', 'btn_login', '2024-01-15 10:35:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (4, 3, 'page_view', '/courses', NULL, '2024-01-16 09:00:00', 'tablet', 'Russia', 90);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (5, 4, 'page_view', '/home', NULL, '2024-01-16 10:00:00', 'desktop', 'Russia', 30);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (6, 5, 'click', '/products', 'card_sql', '2024-01-16 11:30:00', 'mobile', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (7, 2, 'purchase', '/checkout', NULL, '2024-01-17 14:00:00', 'mobile', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (8, 6, 'page_view', '/home', NULL, '2024-01-17 15:00:00', 'desktop', 'Russia', 55);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (9, 1, 'page_view', '/courses', NULL, '2024-01-18 08:00:00', 'desktop', 'Russia', 200);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (10, 7, 'click', '/home', 'btn_signup', '2024-01-18 09:15:00', 'mobile', 'Kazakhstan', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (11, 3, 'click', '/courses', 'btn_enroll', '2024-01-19 10:00:00', 'tablet', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (12, 8, 'page_view', '/products', NULL, '2024-01-19 11:00:00', 'desktop', 'Russia', 75);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (13, 5, 'page_view', '/home', NULL, '2024-01-20 08:30:00', 'mobile', 'Russia', 40);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (14, 9, 'click', '/products', 'card_python', '2024-01-20 09:00:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (15, 4, 'purchase', '/checkout', NULL, '2024-01-21 12:00:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (16, 10, 'page_view', '/courses', NULL, '2024-01-21 14:00:00', 'mobile', 'Russia', 60);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (17, 11, 'page_view', '/home', NULL, '2024-01-22 08:00:00', 'desktop', 'Russia', 25);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (18, 2, 'page_view', '/home', NULL, '2024-01-22 10:00:00', 'mobile', 'Belarus', 35);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (19, 12, 'click', '/products', 'card_js', '2024-01-22 11:00:00', 'mobile', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (20, 1, 'purchase', '/checkout', NULL, '2024-01-23 09:00:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (21, 13, 'page_view', '/home', NULL, '2024-01-23 10:00:00', 'desktop', 'Russia', 50);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (22, 6, 'click', '/courses', 'btn_enroll', '2024-01-24 08:00:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (23, 14, 'page_view', '/products', NULL, '2024-01-24 09:00:00', 'mobile', 'Russia', 85);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (24, 3, 'page_view', '/home', NULL, '2024-01-24 10:00:00', 'tablet', 'Russia', 15);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (25, 1, 'click', '/courses', 'btn_enroll', '2024-01-25 09:00:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (26, 1, 'click', '/products', 'card_sql', '2024-01-25 09:05:00', 'desktop', 'Russia', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (27, 2, 'click', '/home', 'btn_login', '2024-01-25 10:00:00', 'mobile', 'Belarus', 0);
+INSERT INTO events (event_id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (28, 5, 'click', '/products', 'card_python', '2024-01-25 11:00:00', 'mobile', 'Russia', 0);
+
+-- Users
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (1, 'alex', 'alex@example.com', 22, 'Moscow', '2023-01-10', 1);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (2, 'maria', 'maria@example.com', 28, 'Saint Petersburg', '2023-02-14', 0);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (3, 'ivan', 'ivan@example.com', 35, 'Moscow', '2023-03-20', 1);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (4, 'olga', 'olga@example.com', 40, 'Kazan', '2023-04-05', 0);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (5, 'dmitry', 'dmitry@example.com', 25, 'Novosibirsk', '2023-05-12', 0);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (6, 'elena', 'elena@example.com', 30, 'Moscow', '2023-06-18', 1);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (7, 'sergey', 'sergey@example.com', 45, 'Yekaterinburg', '2023-07-01', 0);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (8, 'anna', 'anna@example.com', 19, 'Moscow', '2023-08-22', 1);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (9, 'nikolay', 'nikolay@example.com', 52, 'Saint Petersburg', '2023-09-30', 0);
+INSERT INTO users (user_id, username, email, age, city, registration_date, is_premium) VALUES (10, 'victoria', 'victoria@example.com', 33, 'Kazan', '2023-10-15', 1);
+
+-- Purchases
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (1, 1, 1, 'Wireless Headphones', 8990, '2024-01-10', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (2, 2, 2, 'Smartphone', 69990, '2024-01-15', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (3, 3, 3, 'Laptop', 45990, '2024-01-20', 'pending', 'cash');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (4, 1, 4, 'Speaker', 3490, '2024-02-05', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (5, 4, 5, 'Jacket', 12990, '2024-02-10', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (6, 5, 6, 'Sneakers', 5990, '2024-02-15', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (7, 6, 7, 'Smart Watch', 4990, '2024-02-20', 'cancelled', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (8, 7, 8, 'Monitor', 35990, '2024-03-01', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (9, 2, 9, 'Keyboard', 7990, '2024-03-10', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (10, 8, 10, 'Camera', 15990, '2024-03-15', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (11, 1, 2, 'Smartphone', 69990, '2024-03-20', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (12, 9, 11, 'Tablet', 25990, '2024-03-25', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (13, 3, 4, 'Speaker', 3490, '2024-04-01', 'completed', 'card');
+INSERT INTO purchases (purchase_id, user_id, product_id, product_name, amount, purchase_date, status, payment_method) VALUES (14, 10, 1, 'Wireless Headphones', 8990, '2024-04-05', 'completed', 'card');
 `;
 
 export const EMPTY_ORDERS_SCHEMA = `
