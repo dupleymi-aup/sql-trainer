@@ -36,6 +36,30 @@ function parseMongoQuery(
     if (Array.isArray(parsed)) {
       return { type: 'aggregate', collection: '', options: parsed };
     }
+    // Handle structured format: { aggregate: "collection", pipeline: [...] }
+    if (parsed && typeof parsed === 'object' && 'aggregate' in parsed && Array.isArray(parsed.pipeline)) {
+      return { type: 'aggregate', collection: parsed.aggregate as string, options: parsed.pipeline };
+    }
+    // Handle structured format: { find: "collection", query: {...} }
+    if (parsed && typeof parsed === 'object' && 'find' in parsed && typeof parsed.find === 'string') {
+      return {
+        type: 'find',
+        collection: parsed.find as string,
+        options: parsed.query
+          ? {
+              query: parsed.query,
+              projection: parsed.projection,
+              sort: parsed.sort,
+              limit: parsed.limit,
+              skip: parsed.skip,
+            }
+          : { query: {} },
+      };
+    }
+    // Handle structured format: { count: "collection" }
+    if (parsed && typeof parsed === 'object' && 'count' in parsed && typeof parsed.count === 'string') {
+      return { type: 'find', collection: parsed.count as string, options: { query: {} } };
+    }
     return { type: 'find', collection: '', options: { query: parsed } };
   } catch {
     // Try parsing as MongoDB shell syntax
@@ -193,6 +217,19 @@ function executeAggregate(
  */
 function matchesQuery(doc: Record<string, unknown>, query: Record<string, unknown>): boolean {
   for (const [key, value] of Object.entries(query)) {
+    // Handle $or
+    if (key === '$or' && Array.isArray(value)) {
+      const orMatched = (value as Record<string, unknown>[]).some((orClause) => matchesQuery(doc, orClause));
+      if (!orMatched) return false;
+      continue;
+    }
+    // Handle $and
+    if (key === '$and' && Array.isArray(value)) {
+      const andMatched = (value as Record<string, unknown>[]).every((andClause) => matchesQuery(doc, andClause));
+      if (!andMatched) return false;
+      continue;
+    }
+
     const docValue = getNestedValue(doc, key);
 
     if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -203,7 +240,12 @@ function matchesQuery(doc: Record<string, unknown>, query: Record<string, unknow
     } else if (Array.isArray(value)) {
       if (!Array.isArray(docValue) || !arraysEqual(docValue, value)) return false;
     } else {
-      if (docValue !== value) return false;
+      // For non-object, non-array values, check if docValue is an array and value is contained
+      if (Array.isArray(docValue) && !Array.isArray(value) && typeof value !== 'object') {
+        if (!docValue.includes(value)) return false;
+      } else if (docValue !== value) {
+        return false;
+      }
     }
   }
   return true;
@@ -283,22 +325,40 @@ function aggregateGroup(
     for (const [field, expr] of Object.entries(groupSpec)) {
       if (field === '_id') continue;
       if (!isSafeKey(field)) continue;
-      const exprStr = typeof expr === 'object' ? JSON.stringify(expr) : '';
-      if (exprStr.startsWith('{"$sum"')) {
-        const fieldRef = (expr as Record<string, string>)['$sum'].slice(1);
-        result[field] = groupDocs.reduce((sum, d) => sum + ((getNestedValue(d, fieldRef) as number) || 0), 0);
-      } else if (exprStr.startsWith('{"$avg"')) {
-        const fieldRef = (expr as Record<string, string>)['$avg'].slice(1);
-        result[field] =
-          groupDocs.reduce((sum, d) => sum + ((getNestedValue(d, fieldRef) as number) || 0), 0) / groupDocs.length;
-      } else if (exprStr.startsWith('{"$count"') || exprStr.startsWith('{}')) {
-        result[field] = groupDocs.length;
-      } else if (exprStr.startsWith('{"$max"')) {
-        const fieldRef = (expr as Record<string, string>)['$max'].slice(1);
-        result[field] = Math.max(...groupDocs.map((d) => getNestedValue(d, fieldRef) as number));
-      } else if (exprStr.startsWith('{"$min"')) {
-        const fieldRef = (expr as Record<string, string>)['$min'].slice(1);
-        result[field] = Math.min(...groupDocs.map((d) => getNestedValue(d, fieldRef) as number));
+      const exprObj = expr as Record<string, unknown>;
+      const exprKeys = Object.keys(exprObj);
+
+      for (const op of exprKeys) {
+        if (!isSafeKey(op)) continue;
+        const opValue = exprObj[op];
+
+        if (op === '$sum') {
+          // { $sum: 1 } counts documents, { $sum: "$field" } sums field values
+          if (opValue === 1 || opValue === true) {
+            result[field] = groupDocs.length;
+          } else if (typeof opValue === 'string' && opValue.startsWith('$')) {
+            const fieldRef = opValue.slice(1);
+            result[field] = groupDocs.reduce((sum, d) => sum + ((getNestedValue(d, fieldRef) as number) || 0), 0);
+          }
+        } else if (op === '$avg') {
+          if (typeof opValue === 'string' && opValue.startsWith('$')) {
+            const fieldRef = opValue.slice(1);
+            result[field] =
+              groupDocs.reduce((sum, d) => sum + ((getNestedValue(d, fieldRef) as number) || 0), 0) / groupDocs.length;
+          }
+        } else if (op === '$count') {
+          result[field] = groupDocs.length;
+        } else if (op === '$max') {
+          if (typeof opValue === 'string' && opValue.startsWith('$')) {
+            const fieldRef = opValue.slice(1);
+            result[field] = Math.max(...groupDocs.map((d) => getNestedValue(d, fieldRef) as number));
+          }
+        } else if (op === '$min') {
+          if (typeof opValue === 'string' && opValue.startsWith('$')) {
+            const fieldRef = opValue.slice(1);
+            result[field] = Math.min(...groupDocs.map((d) => getNestedValue(d, fieldRef) as number));
+          }
+        }
       }
     }
     results.push(result);
@@ -367,7 +427,9 @@ export function executeMongoQuery(queryStr: string, schema: MongoSchema): MongoR
       const options = (parsed.options as Record<string, unknown>) || {};
       rows = executeFind(parsed.collection, schema, options);
     } else {
-      rows = executeAggregate(parsed.collection, schema, parsed.options as Record<string, unknown>[]);
+      // For aggregate, use collection from parsed or fallback to schema keys
+      const coll = parsed.collection || Object.keys(schema)[0] || '';
+      rows = executeAggregate(coll, schema, parsed.options as Record<string, unknown>[]);
     }
 
     const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
