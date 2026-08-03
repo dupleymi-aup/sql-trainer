@@ -9,9 +9,11 @@ import {
   CLICKHOUSE_EVENTS_SCHEMA,
   EMPLOYEES_SCHEMA,
   EMPTY_ORDERS_SCHEMA,
+  FTS5_ARTICLES_SCHEMA,
   INDEX_DEMO_SCHEMA,
   SHOP_SCHEMA,
   JSON_DEMO_SCHEMA,
+  USERS_JSON_SCHEMA,
 } from './schemas';
 
 export const ADVANCED_TASKS: TrainingTask[] = [
@@ -305,9 +307,9 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     schema: EMPTY_ORDERS_SCHEMA,
     taskText:
       'Create a trigger that prevents negative stock. Try setting stock=-5 for product id=1 and see the result.',
-    hint: 'CREATE TRIGGER before_product_update BEFORE UPDATE ON products WHEN NEW.stock < 0 BEGIN SELECT RAISE(ABORT, "Stock cannot be negative"); END;',
+    hint: "CREATE TRIGGER before_product_update BEFORE UPDATE ON products WHEN NEW.stock < 0 BEGIN SELECT RAISE(ABORT, 'Stock cannot be negative'); END;",
     sampleSolution:
-      'CREATE TRIGGER before_product_update BEFORE UPDATE ON products WHEN NEW.stock < 0 BEGIN SELECT RAISE(ABORT, "Stock cannot be negative"); END; UPDATE products SET stock = -5 WHERE id = 1;',
+      "CREATE TRIGGER before_product_update BEFORE UPDATE ON products WHEN NEW.stock < 0 BEGIN SELECT RAISE(ABORT, 'Stock cannot be negative'); END; UPDATE products SET stock = -5 WHERE id = 1;",
     verificationQuery: 'SELECT stock FROM products WHERE id = 1;',
   },
 
@@ -333,9 +335,8 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     description: 'Search with prefixes and logical operators',
     difficulty: 'advanced',
     dbType: 'sqlite',
-    schema: '',
-    taskText:
-      'Using the FTS5 articles table from the previous task, find articles containing "data" AND "stor". Use prefix search.',
+    schema: FTS5_ARTICLES_SCHEMA,
+    taskText: 'Using the FTS5 articles table, find articles containing "data" AND "stor". Use prefix search.',
     hint: 'MATCH "data AND stor*" for prefix search.',
     sampleSolution: "SELECT title FROM articles WHERE articles MATCH 'data AND stor*';",
     verificationQuery: "SELECT COUNT(*) as count FROM articles WHERE articles MATCH 'data AND stor*';",
@@ -363,7 +364,7 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     description: 'Filter by JSON fields and create JSON',
     difficulty: 'advanced',
     dbType: 'sqlite',
-    schema: '',
+    schema: USERS_JSON_SCHEMA,
     taskText: 'Using the users table, find users older than 25. Create a JSON object with their name and city.',
     hint: 'json_extract(data, "$.age") > 25 for filtering. json_object("name", ..., "city", ...) for creating JSON.',
     sampleSolution:
@@ -398,7 +399,7 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     hint: 'Multiple queries: SELECT stock, INSERT INTO orders, UPDATE products. Check stock > 0.',
     sampleSolution:
       "SELECT stock FROM products WHERE id = 1; INSERT INTO orders (product_id, quantity, order_date, customer_name) SELECT 1, 1, '2024-04-01', 'Kozlov' FROM products WHERE id = 1 AND stock > 0; UPDATE products SET stock = stock - 1 WHERE id = 1 AND stock > 0; SELECT * FROM orders;",
-    verificationQuery: 'SELECT COUNT(*) as count FROM orders WHERE customer_name = "Kozlov";',
+    verificationQuery: "SELECT COUNT(*) as count FROM orders WHERE customer_name = 'Kozlov';",
   },
 
   // ==================== SHOP TASKS ====================
@@ -576,10 +577,10 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     category: 'company',
     schema: EMPLOYEES_SCHEMA,
     taskText:
-      'For each department find the employee with the highest salary. Use LATERAL JOIN: the subquery references the departments.id column from the outer query. Display department name, first_name, last_name and salary. Sort by department name.',
-    hint: 'CROSS JOIN LATERAL (SELECT ... WHERE department_id = d.id ORDER BY salary DESC LIMIT 1) allows the subquery to use d.id from the outer table.',
+      'For each department find the employee with the highest salary. In PostgreSQL this is done with LATERAL JOIN: the subquery references the departments.id column from the outer query. Display department name, first_name, last_name and salary. Sort by department name.',
+    hint: 'CROSS JOIN LATERAL (SELECT ... WHERE department_id = d.id ORDER BY salary DESC LIMIT 1) allows the subquery to use d.id from the outer table. The SQLite-compatible equivalent uses ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC) with rn = 1.',
     sampleSolution:
-      'SELECT d.name, top_emp.first_name, top_emp.last_name, top_emp.salary FROM departments d CROSS JOIN LATERAL (SELECT e.first_name, e.last_name, e.salary FROM employees e WHERE e.department_id = d.id ORDER BY e.salary DESC LIMIT 1) top_emp ORDER BY d.name;',
+      'SELECT d.name, top_emp.first_name, top_emp.last_name, top_emp.salary FROM departments d JOIN (SELECT e.department_id, e.first_name, e.last_name, e.salary, ROW_NUMBER() OVER (PARTITION BY e.department_id ORDER BY e.salary DESC) as rn FROM employees e) top_emp ON top_emp.department_id = d.id AND top_emp.rn = 1 ORDER BY d.name;',
     verificationQuery:
       'SELECT COUNT(*) as count FROM departments WHERE (SELECT COUNT(*) FROM employees WHERE department_id = departments.id) > 0;',
   },
@@ -674,10 +675,10 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     category: 'company',
     schema: EMPLOYEES_SCHEMA,
     taskText:
-      'Using CROSS JOIN LATERAL, for each department display its name and the top 3 employee salaries (first_name, last_name, salary). The subquery should have LIMIT 3 ORDER BY salary DESC.',
-    hint: 'CROSS JOIN LATERAL allows a subquery to reference columns of the preceding table. Structure: FROM departments CROSS JOIN LATERAL (SELECT ... FROM employees WHERE ... LIMIT 3) sub',
+      'For each department display its name and the top 3 employee salaries (first_name, last_name, salary). In PostgreSQL this is done with CROSS JOIN LATERAL with LIMIT 3 ORDER BY salary DESC.',
+    hint: 'CROSS JOIN LATERAL allows a subquery to reference columns of the preceding table. The SQLite-compatible equivalent uses ROW_NUMBER() OVER (PARTITION BY department_id ORDER BY salary DESC) with rn <= 3.',
     sampleSolution:
-      'SELECT d.name AS department, sub.first_name, sub.last_name, sub.salary FROM departments d CROSS JOIN LATERAL (SELECT first_name, last_name, salary FROM employees e WHERE e.department_id = d.id AND e.is_active = 1 ORDER BY e.salary DESC LIMIT 3) sub ORDER BY d.name, sub.salary DESC;',
+      'SELECT d.name AS department, sub.first_name, sub.last_name, sub.salary FROM departments d JOIN (SELECT e.department_id, e.first_name, e.last_name, e.salary, ROW_NUMBER() OVER (PARTITION BY e.department_id ORDER BY e.salary DESC) as rn FROM employees e WHERE e.is_active = 1) sub ON sub.department_id = d.id AND sub.rn <= 3 ORDER BY d.name, sub.salary DESC;',
     verificationQuery: 'SELECT COUNT(DISTINCT department_id) as count FROM employees WHERE is_active = 1;',
   },
 
@@ -1226,7 +1227,7 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     sampleSolution:
       'WITH order_with_prev AS (SELECT o.customer_id, o.order_date, o.total_amount, LAG(o.total_amount) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) as prev_amount, ROW_NUMBER() OVER (PARTITION BY o.customer_id ORDER BY o.order_date DESC) as rn FROM orders o) SELECT c.first_name, c.last_name, op.prev_amount as prev_order, op.total_amount as last_order, op.total_amount - op.prev_amount as diff FROM order_with_prev op JOIN customers c ON op.customer_id = c.id WHERE op.rn = 1 AND op.prev_amount IS NOT NULL AND op.total_amount > op.prev_amount ORDER BY diff DESC;',
     verificationQuery:
-      'SELECT COUNT(*) as count FROM (SELECT o.customer_id, LAG(o.total_amount) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) as prev_amount, ROW_NUMBER() OVER (PARTITION BY o.customer_id ORDER BY o.order_date DESC) as rn FROM orders o) WHERE rn = 1 AND prev_amount IS NOT NULL AND total_amount > prev_amount;',
+      'SELECT COUNT(*) as count FROM (SELECT o.customer_id, o.total_amount, LAG(o.total_amount) OVER (PARTITION BY o.customer_id ORDER BY o.order_date) as prev_amount, ROW_NUMBER() OVER (PARTITION BY o.customer_id ORDER BY o.order_date DESC) as rn FROM orders o) WHERE rn = 1 AND prev_amount IS NOT NULL AND total_amount > prev_amount;',
   },
 
   {
@@ -1272,10 +1273,10 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     examGroup: 'pg-exam-advanced',
     schema: SHOP_SCHEMA,
     taskText:
-      'For each category find the product with the highest total order quantity. Use CROSS JOIN LATERAL: the subquery should reference categories.id. In the subquery join products with order_items, group by product_id, sum quantity and take LIMIT 1. Display category, product_name and total_ordered.',
-    hint: 'LATERAL allows a subquery in FROM to reference columns of preceding tables in FROM. CROSS JOIN LATERAL — each outer row is combined with the subquery result.',
+      'For each category find the product with the highest total order quantity. In PostgreSQL this is done with CROSS JOIN LATERAL: the subquery should reference categories.id. In the subquery join products with order_items, group by product_id, sum quantity and take LIMIT 1. Display category, product_name and total_ordered.',
+    hint: 'LATERAL allows a subquery in FROM to reference columns of preceding tables in FROM. The SQLite-compatible equivalent uses ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY total_ordered DESC) with rn = 1.',
     sampleSolution:
-      'SELECT c.name AS category, top.product_name, top.total_ordered FROM categories c CROSS JOIN LATERAL (SELECT p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_ordered FROM products p LEFT JOIN order_items oi ON p.id = oi.product_id WHERE p.category_id = c.id GROUP BY p.id, p.name ORDER BY total_ordered DESC LIMIT 1) top ORDER BY c.name;',
+      'SELECT c.name AS category, top.product_name, top.total_ordered FROM categories c JOIN (SELECT p.category_id, p.name AS product_name, COALESCE(SUM(oi.quantity), 0) AS total_ordered, ROW_NUMBER() OVER (PARTITION BY p.category_id ORDER BY COALESCE(SUM(oi.quantity), 0) DESC) as rn FROM products p LEFT JOIN order_items oi ON p.id = oi.product_id GROUP BY p.id, p.name) top ON top.category_id = c.id AND top.rn = 1 ORDER BY c.name;',
     verificationQuery:
       'SELECT COUNT(*) as count FROM categories WHERE (SELECT COUNT(*) FROM products WHERE category_id = categories.id) > 0;',
   },
@@ -1311,7 +1312,7 @@ export const ADVANCED_TASKS: TrainingTask[] = [
       'Find all orders where the customer bought more than one product (check items array length using json_each). Display order id, email and number of items.',
     hint: 'json_each() converts a JSON array into virtual rows. COUNT(json_each.value) gives array length.',
     sampleSolution:
-      'SELECT o.id, o.customer_email, COUNT(*) as num_items FROM orders o, json_each(o.items) WHERE COUNT(*) > 1 GROUP BY o.id, o.customer_email;',
+      'SELECT o.id, o.customer_email, COUNT(*) as num_items FROM orders o, json_each(o.items) GROUP BY o.id, o.customer_email HAVING COUNT(*) > 1;',
     verificationQuery: 'SELECT COUNT(*) as count FROM orders WHERE json_array_length(items) > 1;',
   },
 
@@ -1325,10 +1326,10 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     schema: JSON_DEMO_SCHEMA,
     taskText:
       'Find products that have noise canceling enabled (boolean true in JSON). Display name and price from attributes.',
-    hint: "json_extract returns text — compare with 'true' for booleans. For numbers: compare with the numeric value.",
+    hint: 'json_extract returns JSON booleans as 1/0 — compare with 1. For numbers: compare with the numeric value.',
     sampleSolution:
-      "SELECT name, json_extract(attributes, '$.price_usd') as price FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 'true';",
+      "SELECT name, json_extract(attributes, '$.price_usd') as price FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 1;",
     verificationQuery:
-      "SELECT COUNT(*) as count FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 'true';",
+      "SELECT COUNT(*) as count FROM products WHERE json_extract(attributes, '$.specs.noise_canceling') = 1;",
   },
 ];

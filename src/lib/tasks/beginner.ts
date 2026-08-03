@@ -505,9 +505,9 @@ export const BEGINNER_TASKS: TrainingTask[] = [
     schema: CLICKHOUSE_EVENTS_SCHEMA,
     taskText:
       'For each event (except the first), find the previous duration using neighbour(duration, -1). Display id, event_type, duration and prev_duration. Filter where duration > 0, prev_duration > 0 and ABS(duration - prev_duration) < 10. Sort by id.',
-    hint: 'neighbour(col, offset) returns the value from the adjacent row: offset = -1 for previous row, offset = 1 for next row.',
+    hint: 'neighbour(col, offset) returns the value from the adjacent row: offset = -1 for previous row, offset = 1 for next row. The SQLite-compatible equivalent is the window function LAG(duration) OVER (ORDER BY id).',
     sampleSolution:
-      'SELECT id, event_type, duration, neighbour(duration, -1) AS prev_duration FROM events WHERE duration > 0 AND neighbour(duration, -1) > 0 AND abs(duration - neighbour(duration, -1)) < 10 ORDER BY id;',
+      'SELECT id, event_type, duration, prev_duration FROM (SELECT id, event_type, duration, LAG(duration) OVER (ORDER BY id) AS prev_duration FROM events) WHERE duration > 0 AND prev_duration > 0 AND ABS(duration - prev_duration) < 10 ORDER BY id;',
     verificationQuery: 'SELECT COUNT(*) as count FROM events WHERE duration > 0;',
   },
 

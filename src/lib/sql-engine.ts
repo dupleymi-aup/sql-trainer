@@ -115,12 +115,20 @@ export function splitStatements(sql: string): string[] {
 
     // Split on semicolons (but not inside block comments)
     if (char === ';' && !inBlockComment) {
-      const trimmed = current.trim();
-      if (trimmed.length > 0) {
-        statements.push(trimmed);
+      // Keep CREATE TRIGGER bodies intact: the BEGIN ... END block contains
+      // internal semicolons that must not split the statement.
+      const upper = current.toUpperCase();
+      const inTriggerBody =
+        upper.includes('CREATE TRIGGER') &&
+        (upper.match(/\bBEGIN\b/g) ?? []).length > (upper.match(/\bEND\b/g) ?? []).length;
+      if (!inTriggerBody) {
+        const trimmed = current.trim();
+        if (trimmed.length > 0) {
+          statements.push(trimmed);
+        }
+        current = '';
+        continue;
       }
-      current = '';
-      continue;
     }
 
     current += char;
@@ -407,12 +415,20 @@ function cloneDatabase(source: Database.Database): Database.Database {
   newDb.pragma('foreign_keys = ON');
   registerCustomFunctions(newDb);
 
-  // Dump schema (tables and indexes)
-  const schema = source
+  // Virtual tables (FTS5, RTree, ...) have shadow tables named "<vtab>_..."
+  // (e.g. articles_data, articles_idx) that are recreated automatically by
+  // CREATE VIRTUAL TABLE. Re-executing their DDL fails with "object name
+  // reserved for internal use", so they must be excluded from both the
+  // schema dump and the data copy.
+  const master = source
     .prepare(
-      "SELECT sql FROM sqlite_master WHERE sql IS NOT NULL AND type IN ('table', 'index', 'trigger', 'view') AND name NOT LIKE 'sqlite_%'",
+      "SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND type IN ('table', 'index', 'trigger', 'view') AND name NOT LIKE 'sqlite_%'",
     )
-    .all() as { sql: string }[];
+    .all() as { name: string; sql: string }[];
+  const vtabNames = master.filter((m) => /^CREATE\s+VIRTUAL\s+TABLE\b/i.test(m.sql.trim())).map((m) => m.name);
+  const isShadowTable = (name: string) => vtabNames.some((v) => name.startsWith(`${v}_`));
+
+  const schema = master.filter((m) => !isShadowTable(m.name));
 
   for (const { sql } of schema) {
     newDb.exec(sql);
@@ -424,6 +440,7 @@ function cloneDatabase(source: Database.Database): Database.Database {
     .all() as { name: string }[];
 
   for (const { name: tableName } of tables) {
+    if (isShadowTable(tableName)) continue;
     // Escape table name to prevent SQL injection
     const safeName = tableName.replace(/"/g, '""');
     const rows = source.prepare(`SELECT * FROM "${safeName}"`).all() as Record<string, unknown>[];

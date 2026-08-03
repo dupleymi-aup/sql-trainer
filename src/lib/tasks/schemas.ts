@@ -74,6 +74,7 @@ INSERT INTO employees (id, first_name, last_name, email, department_id, salary, 
 INSERT INTO employees (id, first_name, last_name, email, department_id, salary, hire_date, is_active) VALUES (22, 'Natalia', 'Tarasova', 'natalia@company.com', 2, 118000, '2021-03-10', 1);
 INSERT INTO employees (id, first_name, last_name, email, department_id, salary, hire_date, is_active) VALUES (23, 'Vladimir', 'Orlov', 'vladimir@company.com', 3, 132000, '2020-05-22', 1);
 INSERT INTO employees (id, first_name, last_name, email, department_id, salary, hire_date, is_active) VALUES (24, 'Svetlana', 'Kiseleva', 'svetlana@company.com', 4, 102000, '2022-04-01', 1);
+INSERT INTO employees (id, first_name, last_name, email, department_id, salary, hire_date, is_active) VALUES (25, 'Peter', 'Novikov', 'peter@company.com', 1, 125000, '2022-09-05', 1);
 
 -- Projects
 INSERT INTO projects (id, name, department_id, start_date, end_date, status) VALUES (1, 'Web Platform', 1, '2023-01-15', '2023-08-30', 'completed');
@@ -114,6 +115,7 @@ INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (19
 INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (11, 8, 'Backend Developer', 60);
 INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (21, 8, 'Backend Developer', 60);
 INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (13, 1, 'Frontend Developer', 150);
+INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (8, 1, 'QA Engineer', 30);
 INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (20, 3, 'Assistant', 50);
 INSERT INTO assignments (employee_id, project_id, role, hours_worked) VALUES (24, 6, 'HR Specialist', 70);
 `;
@@ -147,6 +149,7 @@ CREATE TABLE products (
   stock_quantity INTEGER DEFAULT 0,
   created_at TEXT,
   is_active INTEGER DEFAULT 1,
+  metadata TEXT,
   FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
@@ -208,8 +211,8 @@ INSERT INTO customers (id, first_name, last_name, email, phone, city, registrati
 
 -- Products
 INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (1, 'Wireless Headphones Pro', 'Headphones with active noise cancellation', 1, 8990, 50, '2023-01-10', 1);
-INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (2, 'Galaxy X Smartphone', 'Flagship smartphone', 1, 69990, 20, '2023-02-15', 1);
-INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (3, 'FitBand Smart Watch', 'Fitness bracelet with heart rate monitor', 1, 4990, 100, '2023-03-20', 1);
+INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active, metadata) VALUES (2, 'Galaxy X Smartphone', 'Flagship smartphone', 1, 69990, 20, '2023-02-15', 1, '{"brand": "Samsung", "warranty_years": 2}');
+INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active, metadata) VALUES (3, 'FitBand Smart Watch', 'Fitness bracelet with heart rate monitor', 1, 4990, 100, '2023-03-20', 1, '{"brand": "Samsung", "warranty_years": 1}');
 INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (4, 'Bass+ Portable Speaker', 'Waterproof speaker', 1, 3490, 75, '2023-04-05', 1);
 INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (5, 'Nord Winter Jacket', 'Down jacket with hood', 2, 12990, 30, '2023-05-10', 1);
 INSERT INTO products (id, name, description, category_id, price, stock_quantity, created_at, is_active) VALUES (6, 'RunMax Sneakers', 'Running sneakers', 4, 5990, 60, '2023-06-01', 1);
@@ -341,7 +344,7 @@ INSERT INTO events (id, user_id, event_type, page, element, event_time, device, 
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (15, 4, 'purchase', '/checkout', NULL, '2024-01-21 12:00:00', 'desktop', 'Russia', 0);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (16, 10, 'page_view', '/courses', NULL, '2024-01-21 14:00:00', 'mobile', 'Russia', 60);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (17, 11, 'page_view', '/home', NULL, '2024-01-22 08:00:00', 'desktop', 'Russia', 25);
-INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (18, 2, 'page_view', '/home', NULL, '2024-01-22 10:00:00', 'mobile', 'Belarus', 35);
+INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (18, 2, 'page_view', '/home', NULL, '2024-01-22 10:00:00', 'mobile', 'Belarus', 30);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (19, 12, 'click', '/products', 'card_js', '2024-01-22 11:00:00', 'mobile', 'Russia', 0);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (20, 1, 'purchase', '/checkout', NULL, '2024-01-23 09:00:00', 'desktop', 'Russia', 0);
 INSERT INTO events (id, user_id, event_type, page, element, event_time, device, country, duration) VALUES (21, 13, 'page_view', '/home', NULL, '2024-01-23 10:00:00', 'desktop', 'Russia', 50);
@@ -568,4 +571,22 @@ INSERT INTO products (id, name, attributes) VALUES (5, 'Headphones', '{"brand": 
 INSERT INTO orders (id, customer_email, items, metadata) VALUES (1, 'alice@example.com', '[{"product_id": 1, "quantity": 1}, {"product_id": 2, "quantity": 2}]', '{"source": "web", "coupon": "WELCOME10"}');
 INSERT INTO orders (id, customer_email, items, metadata) VALUES (2, 'bob@example.com', '[{"product_id": 3, "quantity": 1}]', '{"source": "mobile", "coupon": null}');
 INSERT INTO orders (id, customer_email, items, metadata) VALUES (3, 'alice@example.com', '[{"product_id": 4, "quantity": 1}, {"product_id": 5, "quantity": 1}]', '{"source": "web", "coupon": null}');
+`;
+
+export const FTS5_ARTICLES_SCHEMA = `
+CREATE VIRTUAL TABLE articles USING fts5(title, content);
+
+INSERT INTO articles (title, content) VALUES ('SQL Basics', 'A database is a system for storing data');
+INSERT INTO articles (title, content) VALUES ('NoSQL Approaches', 'Document-oriented databases');
+INSERT INTO articles (title, content) VALUES ('Programming', 'Python for web development');
+`;
+
+export const USERS_JSON_SCHEMA = `
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  data TEXT NOT NULL
+);
+
+INSERT INTO users (data) VALUES ('{"name": "Alexey", "age": 30, "city": "Moscow"}');
+INSERT INTO users (data) VALUES ('{"name": "Maria", "age": 25, "city": "Saint Petersburg"}');
 `;
