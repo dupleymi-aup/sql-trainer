@@ -106,6 +106,16 @@ describeIf('task content audit', () => {
       }
       expect(failures).toEqual([]);
     });
+
+    it('verificationQuery is not a constant placeholder', () => {
+      const failures: string[] = [];
+      for (const task of sqlTasks) {
+        if (/^SELECT\s+['"]?\d+(?:\.\d+)?['"]?\s*(?:as\s+\w+)?\s*;?$/i.test(task.verificationQuery.trim())) {
+          failures.push(`${task.id}: verification query is a constant placeholder`);
+        }
+      }
+      expect(failures).toEqual([]);
+    });
   });
 
   describe('MongoDB tasks', () => {

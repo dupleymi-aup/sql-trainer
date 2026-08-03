@@ -920,7 +920,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
       'Calculate the total duration of only page_view events. Use sumIf(). Display the result as total_page_view_duration.',
     hint: 'sumIf(expr, condition) sums only rows matching the condition.',
     sampleSolution: "SELECT sumIf(duration, event_type = 'page_view') as total_page_view_duration FROM events;",
-    verificationQuery: 'SELECT 1 as count;',
+    verificationQuery: "SELECT COUNT(*) as count FROM events WHERE event_type = 'page_view';",
   },
 
   {
@@ -934,7 +934,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     taskText: 'Count premium users from Moscow. Use countIf(). Display the result as premium_moscow.',
     hint: 'countIf(condition) counts rows matching the condition.',
     sampleSolution: "SELECT countIf(is_premium = 1 AND city = 'Moscow') as premium_moscow FROM users;",
-    verificationQuery: 'SELECT 1 as count;',
+    verificationQuery: "SELECT COUNT(*) as count FROM users WHERE is_premium = 1 AND city = 'Moscow';",
   },
 
   {
@@ -950,7 +950,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'toStartOfMonth(date) truncates date to the first day of the month.',
     sampleSolution:
       'SELECT toStartOfMonth(purchase_date) as month, count() as cnt, SUM(amount) as total FROM purchases GROUP BY month ORDER BY month;',
-    verificationQuery: 'SELECT 1 as count;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM purchases;',
   },
 
   {
@@ -998,7 +998,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'groupArray(expr) creates an array from all values in the group.',
     sampleSolution:
       'SELECT user_id, groupArray(DISTINCT page) as visited_pages FROM events GROUP BY user_id ORDER BY user_id;',
-    verificationQuery: 'SELECT 1 as count;',
+    verificationQuery: 'SELECT COUNT(DISTINCT user_id) as count FROM events;',
   },
 
   {
@@ -1046,7 +1046,7 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'formatDateTime(date, format) formats dates using strftime-style patterns.',
     sampleSolution:
       "SELECT event_time, formatDateTime(event_time, '%Y-%m-%d %H:00') as hour_bucket, COUNT() as events_count FROM events GROUP BY event_time, hour_bucket ORDER BY event_time;",
-    verificationQuery: 'SELECT 1 as count;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM events;',
   },
 
   {
@@ -1242,7 +1242,8 @@ export const INTERMEDIATE_TASKS: TrainingTask[] = [
     hint: 'WHERE EXISTS (SELECT 1 FROM employees WHERE department_id = d.id AND is_active = 0).',
     sampleSolution:
       'SELECT d.name FROM departments d WHERE EXISTS (SELECT 1 FROM employees e WHERE e.department_id = d.id AND e.is_active = 0);',
-    verificationQuery: 'SELECT 2 as expected_count;',
+    verificationQuery:
+      'SELECT COUNT(*) as count FROM (SELECT DISTINCT department_id FROM employees WHERE is_active = 0 AND department_id IS NOT NULL);',
   },
 
   {

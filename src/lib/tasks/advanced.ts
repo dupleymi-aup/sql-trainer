@@ -77,7 +77,8 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     hint: 'Base case: SELECT 1 as n. Recursion: SELECT n+1 FROM cte WHERE n < 10.',
     sampleSolution:
       'WITH RECURSIVE numbers AS (SELECT 1 as n UNION ALL SELECT n + 1 FROM numbers WHERE n < 10) SELECT n, n * n as square, n * n * n as cube FROM numbers;',
-    verificationQuery: 'SELECT 10 as expected_count;',
+    verificationQuery:
+      'SELECT COUNT(*) as count FROM (WITH RECURSIVE numbers AS (SELECT 1 as n UNION ALL SELECT n + 1 FROM numbers WHERE n < 10) SELECT n FROM numbers);',
   },
 
   {
@@ -139,7 +140,8 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     hint: 'JOIN projects → assignments → employees, GROUP BY project, HAVING COUNT(DISTINCT department_id) >= 3.',
     sampleSolution:
       'SELECT p.name as project_name, COUNT(DISTINCT e.department_id) as dept_count FROM projects p JOIN assignments a ON p.id = a.project_id JOIN employees e ON a.employee_id = e.id GROUP BY p.id, p.name HAVING COUNT(DISTINCT e.department_id) >= 3;',
-    verificationQuery: 'SELECT 0 as expected_count;',
+    verificationQuery:
+      'SELECT COUNT(*) as count FROM (SELECT p.id FROM projects p JOIN assignments a ON p.id = a.project_id JOIN employees e ON a.employee_id = e.id GROUP BY p.id HAVING COUNT(DISTINCT e.department_id) >= 3);',
   },
 
   // ==================== NEW TOPIC TASKS ====================
@@ -1191,7 +1193,7 @@ export const ADVANCED_TASKS: TrainingTask[] = [
     hint: "Base case: customer's first order. Recursion: add total_amount to running_total. ORDER BY order_date.",
     sampleSolution:
       'WITH RECURSIVE order_seq AS (SELECT o.id, o.order_date, o.total_amount, o.total_amount as running_total, ROW_NUMBER() OVER (ORDER BY o.order_date) as rn FROM orders o WHERE o.customer_id = 1 ORDER BY o.order_date), running AS (SELECT id, order_date, total_amount, running_total, rn FROM order_seq WHERE rn = 1 UNION ALL SELECT os.id, os.order_date, os.total_amount, r.running_total + os.total_amount, os.rn FROM order_seq os JOIN running r ON os.rn = r.rn + 1) SELECT order_date, total_amount, running_total FROM running ORDER BY order_date;',
-    verificationQuery: 'SELECT 6 as expected_count;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM orders WHERE customer_id = 1;',
   },
 
   {

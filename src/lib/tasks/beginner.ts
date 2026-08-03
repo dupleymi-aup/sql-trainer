@@ -666,7 +666,7 @@ export const BEGINNER_TASKS: TrainingTask[] = [
     hint: 'WHERE department_id = 4, ORDER BY salary ASC, LIMIT 3.',
     sampleSolution:
       'SELECT first_name, last_name, salary FROM employees WHERE department_id = 4 ORDER BY salary ASC LIMIT 3;',
-    verificationQuery: 'SELECT 3 as expected_count;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM employees WHERE department_id = 4;',
   },
 
   {
@@ -697,7 +697,7 @@ export const BEGINNER_TASKS: TrainingTask[] = [
     hint: 'WHERE is_active = 1, then COUNT(*) and AVG(salary).',
     sampleSolution:
       'SELECT COUNT(*) as active_count, ROUND(AVG(salary)) as avg_salary FROM employees WHERE is_active = 1;',
-    verificationQuery: 'SELECT 22 as expected_count;',
+    verificationQuery: 'SELECT COUNT(*) as count FROM employees WHERE is_active = 1;',
   },
 
   {
